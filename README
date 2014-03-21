@@ -156,7 +156,7 @@ values (because their data are of lower quality)
 - modeling the lightcurves using Chelsea's fortran code:
 
 
----------------------- LIGHTCURVES ---------------------------------
+---------------------- LIGHTCURVES FORTRAN  ---------------------------------
 
 Fortran code (qso.f) which fits a group of light curves with 
 format as a DRW, and compiles as
@@ -243,6 +243,18 @@ for a certain range in tau and SFinf, and adopting a certain cadence and errors.
 2) fit these simulated LCs as a DRW, using this attached code, and made cuts in 
 light curve quality (excluding the blue and red dots in fig 5) before comparing 
 the input and output parameters.
+
+
+----------------- LIGHTCURVES  : JAVELIN  -----------------------------------
+
+Modelling lightcurves using Yu et al. tool written in Python, to model using:
+
+- SDSS only 
+- LINEAR only
+- SDSS and LINER
+
+https://bitbucket.org/nye17/javelin
+
 
 
 
