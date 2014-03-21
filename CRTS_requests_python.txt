@@ -1,3 +1,9 @@
+For tracking : I asked the question about that on stackoverflow:
+
+https://stackoverflow.com/questions/22567306/python-requests-file-upload
+
+-----------------------------------------------------------------
+
 http://stackoverflow.com/questions/68477/send-file-using-post-from-a-python-script
 view-source:http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi
 http://docs.python-requests.org/en/latest/user/quickstart/#response-content
@@ -85,6 +91,7 @@ yields the same results.
 >>> r=requests.post(url,files=files,data=values)
 
 Error -</b></font>\n                        You must select a file to upload!
+
 
 
 Last try : define the file to upload as a parameter which is passed anyway by requests :
