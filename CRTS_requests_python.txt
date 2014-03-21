@@ -1,0 +1,100 @@
+http://stackoverflow.com/questions/68477/send-file-using-post-from-a-python-script
+view-source:http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi
+http://stackoverflow.com/questions/68477/send-file-using-post-from-a-python-scripthttp://docs.python-requests.org/en/latest/user/quickstart/#response-content
+http://stackoverflow.com/questions/13015166/uploading-files-using-requests-and-send-extra-data
+http://docs.python-requests.org/en/latest/user/advanced/#body-content-workflow
+http://docs.python-requests.org/en/latest/api/
+http://docs.python-requests.org/en/latest/
+
+
+
+>>> import requests
+>>> url='http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi/post'
+>>> files={'files': open('id_ra_dec_test.txt','rb')}
+>>> r=requests.post(url,file=files)
+
+>>> r=requests.post('http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi/post',file={'id_ra_dec_test.txt' : open('id_ra_dec_test.txt' ,'rb')})
+
+>>> requests.Response
+>>> r.status_code
+200
+
+Seems that it's an okay code : 
+
+>>> r.status_code == requests.codes.ok
+
+ True
+
+>>> r.raise_for_status()
+(None)
+
+
+>>>  r.headers
+
+>>>  r.text 
+
+ u'<!DOCTYPE html\n\tPUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n\t "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US">\n<head>\n<title>Positional MulitCone Search</title>\n<META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">\n<link rel="stylesheet" type="text/css" href="/DataRelease/main-v3.css" />\n<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />\n</head>\n<body link="#E1E10" alink="#ffff00" vlink="#00ffff" bgcolor="#00004f" text="#000000" charset="utf-7">\n<center>\n    <hr noshade size=1 width="80%">\n        <table border=0 bgcolor="#000000" cellpadding=0 cellspacing=0>\n        <tr>\n            <td>\n                <table border=0 width="100%" cellpadding=5 cellspacing=1>\n                    <tr">\n                        <td bgcolor="#ffefd5" width="100%">\n                        \n                        <font color="#ff0000"><b>Error -</b></font>\n                        You must select a file to upload!<br>You must specify the output Database!<br>You must specify the output Format!<br>You must specify the Output type!<br></td>\n                    </tr>\n                </table>\n            </td>\n        </tr>\n            \n        </table>\n</center>\n'
+
+
+So it seems that my file did not get through ? 
+ 
+
+that's strange:  check the options: 
+
+>>>  verbs=requests.options(r.url)
+>>>  print verbs.headers
+
+CaseInsensitiveDict({'date': 'Wed, 19 Mar 2014 01:08:17 GMT', 'transfer-encoding': 'chunked', 'connection': 'close', 'content-type': 'text/html; charset=ISO-8859-1', 'server': 'Apache/2.2.3 (Red Hat)'})
+
+So it does not seem that there is a possibility of posting a file (?)
+
+See what I can get from this website at all?
+
+>>> r=requests.get(url)
+
+>>> r.text  
+
+just shows me the website that normally comes up? r=requests.get(url)
+
+Try another way, perhaps filling in the 'upload_file' would work ? 
+
+If  I do fill it in , as well as all other options,  it presumes the name of the file and (in theory) proceeds with upload: 
+
+>>> url='http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi/post'
+>>> values={'upload_file' : '/Users/astronomy/Downloads/id_ra_dec_test.txt' , 'DB':'photcat' , 'OUT':'csv' , 'SHORT':'short'}
+>>> files={'files': open('/Users/astronomy/Downloads/id_ra_dec_test.txt','rb')}
+>>> r=requests.post(url,files=files,data=values)
+
+    File \n                        <font color="#00ffff"><b>id_ra_dec_test.txt</b></font> of size \n                        <font color="#00ffff"><b></b></font> bytes is uploaded successfully!
+Query service results: \n</font><table><tr><td><font color=white> There were 0 lines.
+
+
+I thought that maybe this is because we over define the file - both as a parameter of the form and keyword.  But even if I do not use the 'files' keyword in requests.post object  (which is meant to do exactly what  I want, i.e. handle file uploads)  I get the same answer: 
+
+>>> url='http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi/post'
+>>> values={'upload_file' : '/Users/astronomy/Downloads/id_ra_dec_test.txt' , 'DB':'photcat' , 'OUT':'csv' , 'SHORT':'short'}
+>>> r=requests.post(url,data=values)
+
+yields the same results. 
+
+ And I cannot abandon the 'upload_file' parameter, because then the form does not recognize that I want to upload anything at all:
+
+>>> url='http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi/post'
+>>> values={ 'DB':'photcat' , 'OUT':'csv' , 'SHORT':'short'}
+>>> files={'files': open('/Users/astronomy/Downloads/id_ra_dec_test.txt','rb')}
+>>> r=requests.post(url,files=files,data=values)
+
+Error -</b></font>\n                        You must select a file to upload!
+
+
+Last try : define the file to upload as a parameter which is passed anyway by requests :
+
+>>> url='http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi/post'
+>>> values={'upload_file' : 'files' , 'DB':'photcat' , 'OUT':'csv' , 'SHORT':'short'}
+>>> files={'files': open('/Users/astronomy/Downloads/id_ra_dec_test.txt','rb')}
+>>> r=requests.post(url,files=files,data=values)
+
+Nope : it has to be a name that exists, and is passed by the upload_file parameter? 
+
+
+
