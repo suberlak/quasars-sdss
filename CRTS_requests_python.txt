@@ -1,6 +1,6 @@
 http://stackoverflow.com/questions/68477/send-file-using-post-from-a-python-script
 view-source:http://nesssi.cacr.caltech.edu/cgi-bin/getmulticonedb_release2.cgi
-http://stackoverflow.com/questions/68477/send-file-using-post-from-a-python-scripthttp://docs.python-requests.org/en/latest/user/quickstart/#response-content
+http://docs.python-requests.org/en/latest/user/quickstart/#response-content
 http://stackoverflow.com/questions/13015166/uploading-files-using-requests-and-send-extra-data
 http://docs.python-requests.org/en/latest/user/advanced/#body-content-workflow
 http://docs.python-requests.org/en/latest/api/
