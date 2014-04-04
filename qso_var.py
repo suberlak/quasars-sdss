@@ -1,7 +1,8 @@
-# read in the list of files, open the file from the list, and read the content
-# average the values of the second column and do some operations on the third 
-# column for those rows which have the same few numbers of the first column (i.e.
-# the same 5 digits of the MJD, which signifies the same day). 
+# Calculate average magnitudes for each night, per object.
+# We also calculate error by the  weighted mean of photometric error of 
+# individual measurements from a given night.  
+# Save the resulting average magnitude, weighted error, number of obs per night,
+# and the reduced chi2 to a file named out_[inputfile].txt
 
 import numpy as np
 np.seterr(invalid='raise')
