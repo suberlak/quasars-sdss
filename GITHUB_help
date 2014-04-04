@@ -1,0 +1,40 @@
+http://lifehacker.com/5983680/how-the-heck-do-i-use-github
+https://bitbucket.org/nye17/javelin
+http://readwrite.com/2013/10/02/github-for-beginners-part-2#awesm=~ozaSlKhCgxVa7b
+http://blog.teamtreehouse.com/using-github-pages-to-host-your-website
+http://lifehacker.com/5983680/how-the-heck-do-i-use-github
+
+Beautiful and simple guide :
+http://rogerdudler.github.io/git-guide/
+
+
+* when I wanted to initiate a new repo
+mkdir quasars_sdss
+git init
+touch README
+git add README
+git status
+git commit -m 'new commit'
+git remote add origin https://github.com/suberlak/quasars-sdss.git
+git push origin master
+
+* when I wanted to  make some changes to a file and simply update it on github
+git add file
+git commit -m 'some changes'
+git push
+
+* when  I wanted to copy that repo to another computer from github
+I used the MacOSX desktop version of github to clone a repo
+git clone https://github.com/suberlak/quasars-sdss.git
+git pull 
+
+* when I wanted to change the directory structure 
+mkdir newdir
+mv *.png newdir
+git pull
+git add -A  # this adds both info about the deleted files, and about the fact 
+            # that the same files were moved to a different dir 
+git push
+
+
+
