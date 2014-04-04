@@ -30,6 +30,7 @@ for obj in names:
     				    # is way more efficient
     avg_err = np.zeros_like(days).astype(float)
     chi2arr = np.zeros_like(days).astype(float)
+    mjd_arr = np.zeros_like(days).astype(float)
     Nobs = np.zeros_like(days).astype(float)
     print ' '
     print 'For Quasar', obj
@@ -46,6 +47,7 @@ for obj in names:
         avg_mags[i] = avgmag
         error = 1.0 / np.sqrt(np.sum(weights))
         avg_err[i] = error
+        mjd_arr[i] = np.mean(mjd[condition])
         if N == 1.0 : 
             chi2dof = 1.0 
         else :
