@@ -6,11 +6,28 @@
 
 import numpy as np
 np.seterr(invalid='raise')
+import warnings 
 
 names=np.loadtxt('QSO_try/file.list',dtype=str)
 
-master = np.zeros((len(names),5))
-# open the first one to try
+
+# ignore warnings
+#
+#warnings.filterwarnings("error")
+
+#def fxn():
+#    warnings.warn("deprecated", DeprecationWarning)
+#
+#with warnings.catch_warnings():
+#    warnings.simplefilter("ignore")
+#    fxn()
+
+# instead of ignoring warnings of particular type, check which files are empty
+
+cond_notempty = ((for obj in names: os.stat('QSO_try/'+obj)[6]!=0 ))
+# not helpful http://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html  
+
+np.loadtxt('QSO_try/'+obj)
 
 for obj in names:
     address='QSO_try/'+obj
@@ -47,18 +64,16 @@ for obj in names:
         avg_mags[i] = avgmag
         error = 1.0 / np.sqrt(np.sum(weights))
         avg_err[i] = error
-        mjd_arr[i] = np.mean(mjd[condition])
-        if N == 1.0 : 
-            chi2dof = 1.0 
-        else :
-            chi2dof = np.sum(weights*(np.power((mags[condition]-avgmag),2.0))) / (N-1.0)
-        chi2arr[i] = chi2dof
+        mean_mjd = np.mean(mjd[condition])
+        mjd_arr[i] = mean_mjd 
+        chi2 = np.sum(weights*(np.power((mags[condition]-avgmag),2.0))) 
+        chi2arr[i] = chi2
         print 'i = ', i, 'On day MJD', day, 'N obs=', N, 'avgmag=', avgmag, 'avg_err=',error, \
-        'chi2dof=',chi2dof
+        'chi2=',chi2
     
     print '  '
     # save output of averaging of each file to a separate file 
     name_out='QSO_try/out_'+obj[:18]+'.txt'
-    np.savetxt(name_out, np.column_stack((avg_mags,avg_err,Nobs,chi2arr)),fmt='%11.4f')
+    np.savetxt(name_out, np.column_stack((mjd_arr,avg_mags,avg_err,Nobs,chi2arr)),fmt='%11.4f')
 
 
