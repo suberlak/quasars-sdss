@@ -26,11 +26,11 @@ for i in range(len(names)):
     data=np.loadtxt(address)
     if len(data) != data.size :
         n_rows += len(data)
-        print len(data)
+        #print len(data)
         cond_multline[i] = True 
     else:
         n_rows += 1
-        print '1'
+        #print '1'
         cond_multline[i] = False 
 
 print 'We have ', n_rows, 'rows total, in ', len(names), 'out files' 

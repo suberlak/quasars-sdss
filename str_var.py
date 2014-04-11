@@ -7,7 +7,7 @@ np.seterr(invalid='raise')
 import warnings 
 import os 
 
-directory='stars_try/'
+directory='stars/0/'
 names_raw=np.loadtxt(directory+'file.list',dtype=str)
 
 
