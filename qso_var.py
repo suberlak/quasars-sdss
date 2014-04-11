@@ -9,7 +9,7 @@ np.seterr(invalid='raise')
 import warnings 
 import os 
 
-directory='QSO/'
+directory='QSO_try/'
 names=np.loadtxt(directory+'file.list',dtype=str)
 
 
@@ -24,36 +24,66 @@ names=np.loadtxt(directory+'file.list',dtype=str)
 #    warnings.simplefilter("ignore")
 #    fxn()
 
+
 # instead of ignoring warnings of particular type, check which files are empty
+# and count how many nonempty files we have which meet that criterion
+
 cond_notempty=np.empty_like(names,dtype=bool)
 for i in range(len(names)):
     if os.stat(directory+names[i])[6]!=0: 
         cond_notempty[i] = True
     else:
-        cond_notempty[i] = False
+        cond_notempty[i] = False 
 
-# how many nonempy files we have 
-
-num_empty=len(names)- np.sum(cond_notempty)
+num_empty=np.sum(np.logical_not(cond_notempty))
 num_notempty=np.sum(cond_notempty)
 
 print 'Out of', len(names), 'files, we have', num_notempty, 'not-empty files', \
 'and therefore, ', num_empty, 'empty files'
 
+# check if there are any files with only one line of measurement
+cond_multline=np.empty_like(names,dtype=bool)
+
+for i in range(len(names)):
+    address=directory+names[i]
+    data=np.loadtxt(address)
+    
+    if len(data) == 4.0 :
+         cond_multline[i] = False
+    else:
+         cond_multline[i] = True
+
+num_multline = np.sum(cond_multline) - num_empty
+num_singleline = np.sum(np.logical_not(cond_multline))
+
+# print 'After  checking for single-line measurements, we have '
+print 'We have',  num_multline, ' objects with more than one measurement, and',\
+ num_singleline, ' objects with only one measurement'
+
+
+# create a mask for notempty, multiline files 
+
+cond_multi_notempty = np.empty_like(names,dtype=bool)
+for i in range(len(names)) : 
+    if  ( cond_notempty[i] == True ) and (cond_multline[i] == True) :
+        cond_multi_notempty[i] = True
+    else:
+        cond_multi_notempty[i] = False 
+num= np.sum(cond_multi_notempty)
+
+print 'Out of ', len(names),'files total, we have ', num, \
+'objects with more than one measurement'
+print '  ' 
+
+print 'Performing calculations on files with more than one measurement...'
+
 counter=0
-# using only notempty files
-for obj in names[cond_notempty]:
+# using only notempty multiline files
+for obj in names[cond_multi_notempty]:
     address=directory+obj
     data=np.loadtxt(address)
 
     averages=np.zeros(shape=(len(data),3))
-
-# ADD HERE A CHECK THAT ADDRESSES FILES THAT HAVE ONLY ONE MEASUREMENT FOR A 
-# QUASAR IN A DIFFERENT WAY: FOR   names[cond_notempty][180]  , I.E.
-# QSO/000303.32+001019.6.dat   ,WE HAVE ONLY   data=[53643.27065, 21.90, 0.41, 0]
-# SO THAT SAYING data[:,0]  is meaningless, with just one row / column there is 
-# distinction into rows / columns 
- 
 
     mjd = data[:,0]
     mags = data[:,1]
@@ -90,12 +120,47 @@ for obj in names[cond_notempty]:
         # print 'i = ', i, 'On day MJD', day, 'N obs=', N, 'avgmag=', avgmag, \
         # 'avg_err=',error, 'chi2=',chi2
     
-    print '  '
     # save output of averaging of each file to a separate file 
     name_out=directory+'out_'+obj[:18]+'.txt'
+    print 'Saved', name_out
     np.savetxt(name_out, np.column_stack((mjd_arr,avg_mags,avg_err,Nobs,\
     chi2arr)),fmt='%11.4f')
     counter += 1    
+    print '  ' 
+
+# using here only notempy single line files ( I  don't think that would have any
+# practical use, but is necessary for consistent treatment of the dataset
+
+print 'Now calculating single line measurements'
+counter = 0
+for obj in names[np.logical_not(cond_multline)]:
+    address=directory+obj
+    data=np.loadtxt(address)
+
+    mjd = data[0]
+    mag = data[1]
+    err = data[2]
+    Nobs=1
+    print 'obj= ',counter, 'For Quasar', obj
+    weight=1.0 / ( err * err) 
+    error = 1.0 / np.sqrt(weight)
+    chi2 = 1.0
+      
+    # save output 
+    name_out=directory+'out_'+obj[:18]+'.txt'
+    print 'Saved', name_out
+    np.savetxt(name_out, np.column_stack((mjd,mag,error,Nobs,\
+    chi2)),fmt='%11.4f')
+    counter += 1    
+    print '  ' 
+
+
+
+# ADD HERE A CHECK THAT ADDRESSES FILES THAT HAVE ONLY ONE MEASUREMENT FOR A 
+# QUASAR IN A DIFFERENT WAY: FOR   names[cond_notempty][180]  , I.E.
+# QSO/000303.32+001019.6.dat   ,WE HAVE ONLY   data=[53643.27065, 21.90, 0.41, 0]
+# SO THAT SAYING data[:,0]  is meaningless, with just one row / column there is 
+# distinction into rows / columns 
 
 
 # print which files were empty and not used 
