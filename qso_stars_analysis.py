@@ -1,3 +1,7 @@
+# A combined program: merger of qso_an, and stars_an  
+# to analyse either CRTS quasars, preprocessed by qso_var , 
+# or standard stars, preprocessed by str_var
+
 # after performing all the averaging calculations on files located in the 
 # directory with qso_var routine , we have output files as in out.list
 
@@ -20,6 +24,9 @@ import matplotlib.pyplot as plt
 directory='stars_try/'
 dir_name='stars_try'
 names=np.loadtxt(directory+'out.list',dtype=str)
+
+# make an array for storing total timespan of obs per object, 
+# as well as the total number of nights per object
 
 # check how many total rows we have to create lists of appropriate size:
 cond_multline=np.empty_like(names,dtype=bool)
@@ -135,6 +142,8 @@ for number in N_obs :
     plt.ylabel('Probability')
     fname=dir_name+'_chisq_cum_N_'+str(number)+'.png'
     plt.savefig(fname)
+
+
 
 
 

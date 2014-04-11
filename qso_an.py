@@ -1,3 +1,6 @@
+############## DISCONTINUED ###########
+# SEE -->   qso_stars_analysis.py 
+#######################################
 # after performing all the averaging calculations on files located in the 
 # directory with qso_var routine , we have output files as in out.list
 
@@ -14,8 +17,8 @@
 import numpy as np
 import matplotlib.pyplot as plt 
 
-directory='QSO_try/'
-dir_name='QSO_try'
+directory='QSO/'
+dir_name='QSO'
 names=np.loadtxt(directory+'out.list',dtype=str)
 
 # check how many total rows we have to create lists of appropriate size:
@@ -108,7 +111,7 @@ plt.savefig(fname)
 
 # error vs  average magnitude  as a colour- coded histogram
 # http://oceanpython.org/2013/02/25/2d-histogram/
-
+print 'plotting error vs average mag colour-coded histogram'
 fig1 = plt.figure()
 plt.plot(err,mag,'.r')
 plt.xlabel('Error')
@@ -128,8 +131,17 @@ fname=dir_name+'_mag_err.png'
 plt.savefig(fname)
 
 
+# chi-sq cumulative
 
-
+print 'Plotting chi-sq cumulative'
+for number in [1,2,3,4,5,6,7,8,9]:
+    plt.clf()
+    plt.hist(chisq[N==number],bins=100, normed=True, cumulative=True)
+    plt.title('Chi-sq cumulative distribution')
+    plt.xlabel('chi-squared')
+    plt.ylabel('Probability')
+    fname=dir_name+'_chisq_cum_N_'+str(number)+'.png'
+    plt.savefig(fname)
 
 
 
