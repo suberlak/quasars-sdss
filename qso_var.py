@@ -5,7 +5,7 @@
 # and the reduced chi2 to a file named out_[inputfile].txt
 #
 # output file structure:
-# ave mag |  weighted_error | chi-sq | N_obs_per_night | ave_MJD_of_night  
+# ave_MJD_of_night  | ave mag |  weighted_error |  N_obs_per_night | chi-sq 
 
 import numpy as np
 np.seterr(invalid='raise')
