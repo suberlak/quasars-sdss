@@ -3,6 +3,9 @@
 # individual measurements from a given night.  
 # Save the resulting average magnitude, weighted error, number of obs per night,
 # and the reduced chi2 to a file named out_[inputfile].txt
+#
+# output file structure:
+# ave mag |  weighted_error | chi-sq | N_obs_per_night | ave_MJD_of_night  
 
 import numpy as np
 np.seterr(invalid='raise')
@@ -10,27 +13,15 @@ import warnings
 import os 
 
 directory='QSO_try/'
-names=np.loadtxt(directory+'file.list',dtype=str)
+names_raw=np.loadtxt(directory+'file.list',dtype=str)
 
 
-# ignore warnings
-#
-#warnings.filterwarnings("error")
-
-#def fxn():
-#    warnings.warn("deprecated", DeprecationWarning)
-#
-#with warnings.catch_warnings():
-#    warnings.simplefilter("ignore")
-#    fxn()
-
-
-# instead of ignoring warnings of particular type, check which files are empty
+# check which files are empty
 # and count how many nonempty files we have which meet that criterion
 
-cond_notempty=np.empty_like(names,dtype=bool)
-for i in range(len(names)):
-    if os.stat(directory+names[i])[6]!=0: 
+cond_notempty=np.empty_like(names_raw,dtype=bool)
+for i in range(len(names_raw)):
+    if os.stat(directory+names_raw[i])[6]!=0: 
         cond_notempty[i] = True
     else:
         cond_notempty[i] = False 
@@ -38,22 +29,28 @@ for i in range(len(names)):
 num_empty=np.sum(np.logical_not(cond_notempty))
 num_notempty=np.sum(cond_notempty)
 
-print 'Out of', len(names), 'files, we have', num_notempty, 'not-empty files', \
+print 'Out of', len(names_raw), 'files, we have', num_notempty, 'not-empty files', \
 'and therefore, ', num_empty, 'empty files'
 
+print 'Files that were empty:', names_raw[np.logical_not(cond_notempty)]
+
+names=names_raw[cond_notempty]
+
+# of all notempty files 
 # check if there are any files with only one line of measurement
+
 cond_multline=np.empty_like(names,dtype=bool)
 
 for i in range(len(names)):
     address=directory+names[i]
     data=np.loadtxt(address)
     
-    if len(data) == 4.0 :
+    if data.size == 4.0 :
          cond_multline[i] = False
     else:
          cond_multline[i] = True
 
-num_multline = np.sum(cond_multline) - num_empty
+num_multline = np.sum(cond_multline)
 num_singleline = np.sum(np.logical_not(cond_multline))
 
 # print 'After  checking for single-line measurements, we have '
@@ -61,25 +58,14 @@ print 'We have',  num_multline, ' objects with more than one measurement, and',\
  num_singleline, ' objects with only one measurement'
 
 
-# create a mask for notempty, multiline files 
-
-cond_multi_notempty = np.empty_like(names,dtype=bool)
-for i in range(len(names)) : 
-    if  ( cond_notempty[i] == True ) and (cond_multline[i] == True) :
-        cond_multi_notempty[i] = True
-    else:
-        cond_multi_notempty[i] = False 
-num= np.sum(cond_multi_notempty)
-
-print 'Out of ', len(names),'files total, we have ', num, \
-'objects with more than one measurement'
 print '  ' 
 
 print 'Performing calculations on files with more than one measurement...'
 
+
 counter=0
 # using only notempty multiline files
-for obj in names[cond_multi_notempty]:
+for obj in names[cond_multline]:
     address=directory+obj
     data=np.loadtxt(address)
 
@@ -154,16 +140,22 @@ for obj in names[np.logical_not(cond_multline)]:
     counter += 1    
     print '  ' 
 
+# create a list of all output files, for other programs to use 
+# command = 'ls '+directory+'out_* '+'> '+directory+'out.list'
+# os.system(command)
+# 
+# unhelpful : because it includes the directory before the file name! 
+# i think I'd have to create a list of length of all non-empty files , 
+# and fill it with names as they are created , and then dump all of that 
+# to a file called  file.list
+#
+# but I'm not sure if there would not be any troubles with formatting 
 
+# for now, to get the list of output files, do in the shell 
 
-# ADD HERE A CHECK THAT ADDRESSES FILES THAT HAVE ONLY ONE MEASUREMENT FOR A 
-# QUASAR IN A DIFFERENT WAY: FOR   names[cond_notempty][180]  , I.E.
-# QSO/000303.32+001019.6.dat   ,WE HAVE ONLY   data=[53643.27065, 21.90, 0.41, 0]
-# SO THAT SAYING data[:,0]  is meaningless, with just one row / column there is 
-# distinction into rows / columns 
+# cd QSO/
+# touch out.list
+# ls out* > out.list
+# cd ..
 
-
-# print which files were empty and not used 
-print 'Files that were empty:', names[np.logical_not(cond_notempty)] 
-     # np.logical_not negates the boolean values 
 
