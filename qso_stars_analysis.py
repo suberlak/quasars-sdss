@@ -1,3 +1,6 @@
+# Analysis module : pulls all the output files together and creates the input 
+# for the plotting module 
+# 
 # A combined program: merger of qso_an, and stars_an  
 # to analyse either CRTS quasars, preprocessed by qso_var , 
 # or standard stars, preprocessed by str_var
@@ -18,15 +21,24 @@
 import numpy as np
 import matplotlib.pyplot as plt 
 
-# set the two parameters below to be the working directories where files are 
-# located
 
-directory='stars_try/'
-dir_name='stars_try'
+# list of several directories I used : 
+
+dirs=['QSO','QSO_try', 'stars/0','stars_try']
+
+# user input : set the two parameters below to be the working directories 
+# where files are  located by choosing appropriate number, or add another dir 
+# to the list above 
+
+directory=dirs[0]+'/'
+dir_name=dirs[0]
 names=np.loadtxt(directory+'out.list',dtype=str)
 
 # make an array for storing total timespan of obs per object, 
 # as well as the total number of nights per object
+nobs_object = np.zeros_like(names).astype(float) # store how many nights per object
+timespan_obs = np.zeros_like(names).astype(float) # store what was the total 
+					# timespan of observations per object
 
 # check how many total rows we have to create lists of appropriate size:
 cond_multline=np.empty_like(names,dtype=bool)
@@ -34,16 +46,26 @@ n_rows = 0
 for i in range(len(names)):
     address=directory+names[i]
     data=np.loadtxt(address)
-    if len(data) != data.size :
+       
+    if len(data) != data.size :  # handling  multline data 
         n_rows += len(data)
         #print len(data)
         cond_multline[i] = True 
-    else:
+        mjdrange = data[-1,0]-data[0,0]  # gives number of days between first and 
+	# np.min(data[:,0]) - np.max(data[:,0])	  # last observation
+        # same as the function in  the line above - we can assume that rows are 
+        # chronological 
+        timespan_obs[i] = mjdrange
+        nobs_object[i]= len(data)
+    else:    # handling singleline data 
         n_rows += 1
         #print '1'
         cond_multline[i] = False 
+        timespan_obs[i] = 0
+        nobs_object[i]= 1
 
 print 'We have ', n_rows, 'rows total, in ', len(names), 'out files' 
+
 
 # make appropriate arrays 
 
@@ -76,74 +98,24 @@ for obj in names[np.logical_not(cond_multline)] :
     N = np.append(N,data[3])
     chisq = np.append(chisq,data[1])
 
-# plot the distributions
-# http://bespokeblog.wordpress.com/2011/07/11/basic-data-plotting-with-matplotlib-part-3-histograms/
 
-# mean error 
-plt.clf()
-plt.hist(err,bins=30)
-plt.title('Error distribution')
-plt.xlabel('Mean weighted error')
-plt.ylabel('Frequency')
-fname=dir_name+'_mean_err.png'
-plt.savefig(fname)
+file1 = dir_name + '_all-rows_mjd_mag_err_N_chisq.npy'
+allrows = [mjd,mag,err,N,chisq]
+np.save(file1,allrows)
+print 'I saved to ', file1, 'all data for all objects : obs_date, mean mag,',\
+' error, N, chi-squared, with ', len(mjd), 'rows' 
 
+file2 = dir_name + '_name_timespan_nobs.npy'
+stats = [names,timespan_obs, nobs_object]
+np.save(file2,stats)
+print 'I saved to ', file2, ' statistics for each object : name, total ',\
+'timespan of observations, and total number of averaged observations, with ',\
+len(names), 'rows'
 
-# number of observations
-
-plt.clf()
-plt.hist(N,bins=30)
-plt.title('Distribution of the number of observations per night per object')
-plt.xlabel('Number of observations')
-plt.ylabel('Frequency')
-fname=dir_name+'_N_obs.png'
-plt.savefig(fname)
-
-# average magnitude 
-
-plt.clf()
-plt.hist(mag,bins=30)
-plt.title('Average magnitude distribution')
-plt.xlabel('Magnitude')
-plt.ylabel('Frequency')
-fname=dir_name+'_mag.png'
-plt.savefig(fname)
-
-# error vs  average magnitude  as a colour- coded histogram
-# http://oceanpython.org/2013/02/25/2d-histogram/
-print 'plotting error vs average mag colour-coded histogram'
-fig1 = plt.figure()
-plt.plot(err,mag,'.r')
-plt.xlabel('Error')
-plt.ylabel('Magnitude')
-nbins =200
-H, xedges,yedges = np.histogram2d(err,mag,bins=nbins)
-H = np.rot90(H)
-H = np.flipud(H)
-Hmasked = np.ma.masked_where(H==0,H)
-fig2 = plt.figure()
-plt.pcolormesh(xedges, yedges, Hmasked)
-plt.xlabel('Error')
-plt.ylabel('Magnitude')
-cbar = plt.colorbar()
-cbar.ax.set_ylabel('Counts')
-fname=dir_name+'_mag_err.png'
-plt.savefig(fname)
-
-
-# chi-sq cumulative
-N_obs=np.unique(N)
-print 'Plotting chi-sq cumulative'
-for number in N_obs :
-    plt.clf()
-    plt.hist(chisq[N==number],bins=100, normed=True, cumulative=True)
-    plt.title('Chi-sq cumulative distribution')
-    plt.xlabel('chi-squared')
-    plt.ylabel('Probability')
-    fname=dir_name+'_chisq_cum_N_'+str(number)+'.png'
-    plt.savefig(fname)
-
-
-
+#
+#
+# plotting is done with qso_stars_plot.py  
+#
+#
 
 
