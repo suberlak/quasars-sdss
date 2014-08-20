@@ -22,12 +22,12 @@ errs = data[:,2]
 # Kernel setup 
 
 kernel = 17.0**2 * kernels.ExpSquaredKernel(57.0**2)
-print type(kernel)
+#print type(kernel)
 
 # Optimization
 
 gp = george.GP(kernel, mean = np.mean(y))
-gp.kernel(gp._x[:, None], gp._x[None, :])
+#gp.kernel(gp._x[:, None], gp._x[None, :])
 #gp = george.HODLRGP(kernel,mean=np.mean(y))
 gp.compute(t,yerr=errs)
 
