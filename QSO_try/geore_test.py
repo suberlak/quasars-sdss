@@ -21,7 +21,7 @@ errs = data[:,2]
 
 # Kernel setup 
 
-kernel = 17.0**2 * kernels.ExpSquaredKernel(57.0**2)
+kernel =( 0.06**2.0 )* kernels.ExpKernel(7.0)
 #print type(kernel)
 
 # Optimization
