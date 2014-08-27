@@ -71,8 +71,8 @@ const = -(np.sum(np.log(np.diag(factor))) + scale*len(x))
 
 
 # Calculating the ln-likelihood function as a function of the kernel parameters
-mean=np.mean(y)
-r = gp._check_dimensions(y)[ins] # - mean(x)  - I don't get what is calculated here 
+#mean=np.mean(y)
+#r = gp._check_dimensions(y)[ins] # - mean(x)  - I don't get what is calculated here 
 # what is mean(x) ? Mean is a number, but there is this function mean which does 
 # some really strange stuff... 
 
