@@ -1,0 +1,39 @@
+ra_jav_deg row  0
+Obj from javelin coords:  348.55775 0.409805555556
+Obj from Chelsea coords:  [ 348.558] [ 0.41]
+ra_jav_deg row  1
+Obj from javelin coords:  348.570083333 -1.23652777778
+Obj from Chelsea coords:  [ 348.57] [-1.237]
+ra_jav_deg row  2
+Obj from javelin coords:  348.604708333 -1.15080555556
+Obj from Chelsea coords:  [ 348.605] [-1.151]
+ra_jav_deg row  3
+Obj from javelin coords:  348.618916667 -1.22552777778
+Obj from Chelsea coords:  [ 348.619] [-1.226]
+ra_jav_deg row  4
+Obj from javelin coords:  348.647708333 1.02747222222
+Obj from Chelsea coords:  [ 348.648] [ 1.027]
+ra_jav_deg row  5
+Obj from javelin coords:  348.6525 0.568305555556
+Obj from Chelsea coords:  [ 348.653] [ 0.568]
+ra_jav_deg row  6
+Obj from javelin coords:  348.686416667 -1.26513888889
+Obj from Chelsea coords:  [ 348.686] [-1.265]
+ra_jav_deg row  7
+Obj from javelin coords:  348.687916667 0.143611111111
+Obj from Chelsea coords:  [ 348.688] [ 0.144]
+ra_jav_deg row  8
+Obj from javelin coords:  348.689541667 -1.12655555556
+Obj from Chelsea coords:  [ 348.69] [-1.127]
+ra_jav  dec_jav ra_ch   dec_ch  tau_jav     log_10_tau_chsigma_jav   log_sig_ch  
+348.5577  348.5578  0.4098  0.4098  1.0252 624.9280  0.2232 -0.6223
+348.5701  348.5701 -1.2365 -1.2366  1.2423 635.3163  0.3282 -0.5293
+348.6047  348.6047 -1.1508 -1.1508  1.0045 959.8205  0.3852 -0.5870
+348.6189  348.6189 -1.2255 -1.2255  1.1060 100000.0000  0.4745 -0.6250
+348.6477  348.6477  1.0275  1.0275  1.0082 735.5971  0.3374 -0.5115
+348.6525  348.6525  0.5683  0.5683  1.0141 1067.7510  0.3826 -0.4886
+348.6864  348.6864 -1.2651 -1.2651  1.0184 100000.0000  0.3730 -0.8250
+348.6879  348.6880  0.1436  0.1436  1.0167 863.6942  0.2245 -0.7958
+348.6895  348.6895 -1.1266 -1.1266  1.0065 796.8379  0.6023 -0.4478
+
+From chelsea_results_load.py
