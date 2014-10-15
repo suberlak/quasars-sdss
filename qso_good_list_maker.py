@@ -27,7 +27,7 @@ np.seterr(invalid='raise')
 import warnings 
 import os 
 
-directory='QSO/'
+directory='QSO_try/'
 names_raw=np.loadtxt(directory+'out.list',dtype=str)
 
 

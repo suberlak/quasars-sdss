@@ -72,67 +72,53 @@ avg_mag_ttl= np.zeros_like(lc_stat_files).astype(float)
 avg_err_ttl= np.zeros_like(lc_stat_files).astype(float)
 avg_mjd_diff= np.zeros_like(lc_stat_files).astype(float)
 mean_time_betw_obs = np.zeros_like(lc_stat_files).astype(float)
-# check how many total rows we have to create lists of appropriate size:
-cond_multline=np.empty_like(lc_stat_files,dtype=bool)
-#n_rows = 0
 
 # http://stackoverflow.com/questions/845058/how-to-get-line-count-cheaply-in-python 
 
-# MUST INCLUDE  A MASK FOR EMPTY FILES  !!! 
+# WE ONLY INCLUDE MULTILINE, NON-EMPTY FILES, USING out_good.list  only 
 
-
-for i in range(len(lc_stat_files)-1):
-    address=directory+lc_stat_files[i]   # lc diags 
+for i in range(len(lc_stat_files)):
+    address=directory+lc_stat_files[i]   # lc diags : out files 
     address1=directory + lc_stat_files[i][4:22]+'.dat'  # the original lc  
     data=np.loadtxt(address)     
     lc_length[i] = sum(1 for line in open(address1))
     nobs_object[i] = sum(1 for line in open(address))
     avg_mag_ttl[i] = np.mean(data[:,1])
     avg_err_ttl[i] = np.mean(data[:,2])
-    avg_N_day[i] = np.mean(data[:,3])
-    if len(data) != data.size :  # handling  multline data 
-        #n_rows += len(data)
-        #print len(data)
-        cond_multline[i] = True 
-        mjdrange = data[-1,0]-data[0,0]  # gives number of days between first and 
-	# np.min(data[:,0]) - np.max(data[:,0])	  # last observation
-        # same as the function in  the line above - we can assume that rows are 
-        # chronological 
-        timespan_obs[i] = mjdrange
-        mjd_diff = np.zeros(len(data[:,0]))
-        
-        # the first slowing down diagnostic 
-        for j in range(len(data)-1):
-            mjd_diff[j] = data[j+1,0] - data[j,0]
-        avg_mjd_diff[i] = np.mean(mjd_diff)          
+    avg_N_day[i] = np.mean(data[:,3])   
+    mjdrange = data[-1,0]-data[0,0]  # gives number of days between first and 
+    timespan_obs[i] = mjdrange
+    mjd_diff = np.zeros(len(data[:,0]))
+    
+    # the first slowing down diagnostic 
+    for j in range(len(data)-1):
+        mjd_diff[j] = data[j+1,0] - data[j,0]
+    avg_mjd_diff[i] = np.mean(mjd_diff)          
 
-        # this last diagnostic slows it down considerably... 
-        data1 = np.loadtxt(address1)
-        mjd_diff1 = np.zeros(len(data1[:,0]))
-        for j in range(len(data1)-1):
-            mjd_diff1[j] = data1[j+1,0] - data1[j,0]
-        mean_time_betw_obs[i] = np.mean(mjd_diff1) 
+    # this last diagnostic slows it down considerably... 
+    data1 = np.loadtxt(address1)
+    mjd_diff1 = np.zeros(len(data1[:,0]))
+    for j in range(len(data1)-1):
+        mjd_diff1[j] = data1[j+1,0] - data1[j,0]
+    mean_time_betw_obs[i] = np.mean(mjd_diff1) 
         
-    else:  
-        #n_rows += 1
-        #print '1'
-        cond_multline[i] = False 
-        timespan_obs[i] = 0
-        avg_mjd_diff[i] = 0
-
+   
 print 'We have ', len(lc_stat_files), 'lightcurve diagnostic "out" files' 
 
+# Shorten the names to be 
+for i in range(len(lc_stat_files)): lc_stat_files[i]=lc_stat_files[i][4:]
 
-file1 = 'qso_name_timespan_nobs_1.npy'
+
+file1 = 'qso_name_timespan_nobs_2.npy'
 stats = [lc_stat_files,timespan_obs, nobs_object, lc_length,avg_N_day,avg_mag_ttl,avg_err_ttl,avg_mjd_diff,mean_time_betw_obs]
 np.save(file1,stats)
-print 'I saved to ', file1, ' statistics for each object : (0) name, (1) total ',\
-'timespan of observations (final mjd - start mjd),  (2) total number of averaged',\
+print 'I saved to ', file1, ' statistics for each object : \n(0) name,  \n(1) total ',\
+'timespan of observations (final mjd - start mjd),  \n(2) total number of averaged',\
 ' observations (number of days on which quasar was observed),',\
-' (3) lightcurve length (number of rows  in the original QSO data)',\
-'(4) average number of measurements per day, (5) total average magnitude of a quasar:,',\
-' mean along the <day_mag> column, (6) total average error : mean along the error column ',\
-'(7) average mean number of days between observing days (from out files) , ',\
-'(8) mean time between individual observations (from original files)  '
+' \n(3) lightcurve length (number of rows  in the original QSO data)',\
+'\n(4) average number of measurements per day, \n(5) total average magnitude of a quasar:,',\
+' mean along the <day_mag> column, \n(6) total average error : mean along the error column ',\
+'\n(7) average mean number of days between observing days (from out files) , ',\
+'\n(8) mean time between individual observations (from original files)  '
 
 #allrows = np.load(file1)
