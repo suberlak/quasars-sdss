@@ -1,22 +1,21 @@
-# Analysis module : pulls all the output files together and creates the input 
-# for the plotting module 
-# 
-# A combined program: merger of qso_an, and stars_an  
-# to analyse either CRTS quasars, preprocessed by qso_var , 
-# or standard stars, preprocessed by str_var
+""" 
+Analysis module : pulls all the output files together and creates the input 
+for the plotting module 
+ 
+A combined program: merger of qso_an, and stars_an  to analyse either 
+CRTS quasars, preprocessed by qso_var ,  or standard stars, preprocessed by str_var
+after performing all the averaging calculations on files located in the 
+directory with qso_var routine , we have output files as in out.list
 
-# after performing all the averaging calculations on files located in the 
-# directory with qso_var routine , we have output files as in out.list
+http://stackoverflow.com/questions/89228/calling-an-external-command-in-python
 
-# http://stackoverflow.com/questions/89228/calling-an-external-command-in-python
+with structure 
+ ave_MJD_of_night  | ave mag |  weighted_error |  N_obs_per_night | chi-sq 
+ 
+read in all the files from out.list , plot global distributions of various 
+parameters
 
-# with structure 
-
-# ave_MJD_of_night  | ave mag |  weighted_error |  N_obs_per_night | chi-sq 
-
-# read in all the files from out.list , plot global distributions of various 
-# parameters
-
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -30,8 +29,8 @@ dirs=['QSO','QSO_try', 'stars/0','stars_try']
 # where files are  located by choosing appropriate number, or add another dir 
 # to the list above 
 
-directory=dirs[0]+'/'
-dir_name=dirs[0]
+directory=dirs[3]+'/'
+dir_name=dirs[3]
 names=np.loadtxt(directory+'out.list',dtype=str)
 
 # make an array for storing total timespan of obs per object, 
@@ -39,6 +38,7 @@ names=np.loadtxt(directory+'out.list',dtype=str)
 nobs_object = np.zeros_like(names).astype(float) # store how many nights per object
 timespan_obs = np.zeros_like(names).astype(float) # store what was the total 
 					# timespan of observations per object
+lc_length=np.zeros_like(names).astype(float)
 
 # check how many total rows we have to create lists of appropriate size:
 cond_multline=np.empty_like(names,dtype=bool)

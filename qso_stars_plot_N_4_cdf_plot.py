@@ -13,8 +13,8 @@ from scipy.stats import chi2
 # it will find the relevant .npy files automatically 
 
 dirs=['QSO','QSO_try', 'stars/0','stars_try']
-directory=dirs[1]+'/'
-dir_name=dirs[1]
+directory=dirs[2]+'/'
+dir_name=dirs[2]
 
 # always refer to qso_stars_analysis.py  for the names of the two diagnostic files
 

@@ -120,7 +120,7 @@ for obj in names[np.logical_not(cond_multline)]:
     mag = data[1]
     err = data[2]
     Nobs=1
-    print 'obj= ',counter, 'For Quasar', obj
+    print 'obj= ',counter, 'For Star', obj
     weight=1.0 / ( err * err) 
     error = 1.0 / np.sqrt(weight)
     chi2 = 1.0
