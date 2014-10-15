@@ -33,7 +33,7 @@ QSO_name           sigma_l,       sigma_m,       sigma_h,       tau_l,        ta
 """
 import numpy as np 
 
-files=np.loadtxt('chains_list_new9.ls',dtype=str)
+files=np.loadtxt('chains_list_new99.ls',dtype=str)
 
 # initialise storing vecfiles_rtors
 
@@ -100,7 +100,7 @@ for j in range(len(files)):
     
 ## save all the information to output file
 
-fout = 'javelin_chain_results_new9_sigma_tau.txt'
+fout = 'javelin_chain_results_new99_sigma_tau.txt'
 DAT= np.column_stack((files_read, sigma_l, sigma_m, sigma_h, tau_l, tau_m, tau_h))
 
 # sort the DAT column accoring to QSO names 
