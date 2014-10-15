@@ -28,13 +28,11 @@ print 'Out of', len(names_raw), 'files, we have', num_notempty, 'not-empty files
 
 names=names_raw[cond_notempty]
 
-#filename= names[0]
-filename = '231408.02-011355.4_extended.dat'
-print 'Working file', filename 
-
-
-data = get_data(filename,names=["Continuum"])
-cont=Cont_Model(data)
-
-cont.do_mcmc(fchain="new_chain_for_extended_curve.dat")
-cont.show_hist(bins=100)
+for i in range(2,len(names)):
+    filename= names[i]
+    print 'Working file', filename 
+    data = get_data(filename,names=["Continuum"])
+    cont=Cont_Model(data)
+    chain_name = filename[:18]+'_chain.dat'
+    cont.do_mcmc(fchain=chain_name)
+#cont.show_hist(bins=100)

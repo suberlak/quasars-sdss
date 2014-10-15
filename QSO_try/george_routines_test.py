@@ -68,6 +68,8 @@ factor=upper
 #And we calculate the log-determinant
 scale=0.5*np.log(2*np.pi)
 const = -(np.sum(np.log(np.diag(factor))) + scale*len(x))
+_x,inds  =gp.parse_samples(x)
+r = gp._check_dimensions(y)[ins] - gp.mean(x)
 
 
 # Calculating the ln-likelihood function as a function of the kernel parameters
