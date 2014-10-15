@@ -37,8 +37,6 @@ Thus here I need to make  np.power(10,log_tau_med) , etc.
 import numpy as np
 #results = np.genfromtxt('s82drw_g.dat')
 
-
-
 lines = tuple(open('s82drw_g.dat', 'r'))
 # the problem is that the last column sometimes is not separated by whitespace 
 # from the preceding column. Thus I read the entire file as string
@@ -70,7 +68,14 @@ for i in range(3,len(lines)):   # (runs to len(lines)-1 )
 # comparison with the javelin results 
 # javelin results come  from  
 # 
-javelin_chains = 'javelin_chain_results_new9_sigma_tau.txt'
+
+#  shorter chain results:  
+# 
+#  javelin_chain_results_new7_sigma_tau.txt
+#
+#
+
+javelin_chains = 'javelin_chain_results_new99_sigma_tau.txt'
 javelin_results = np.genfromtxt('../QSO_try/'+javelin_chains, dtype="str")
 """
 Important : the quasar chain  names are assumed to be in the form 
@@ -231,6 +236,7 @@ for i in range(0, len(ra1)):
 chelsea_matching_rows = np.zeros_like(ra_jav_deg, dtype=int)
 mask_mismatched = np.zeros_like(chelsea_matching_rows,dtype=bool)
 matched_radius = np.zeros_like(ra_jav_deg,dtype=float)
+# mask=np.zeros_like(chelsea_matching_rows,dtype=bool)
 
 for i in range(0,len(ra_jav_deg)):
     matched_distances = ang_sep(ra_jav_deg[i],dec_jav_deg[i], ra_ch, dec_ch)
@@ -248,13 +254,14 @@ for i in range(0,len(ra_jav_deg)):
         mask_mismatched[i] = True 
         print 'For object ra_jav_deg',ra_jav_deg[i] ,'dec_jav_deg',\
         dec_jav_deg[i],'There is are',dims[1],' matching entries from Chelsea results'
-        
+   
+     
 # secondary matching : allow bigger margin for those that were not matched : case by case
-        
+print '\n Secondary matching'
 
 for i in range(0,len(ra_jav_deg[mask_mismatched])):
     ttl_index = np.where(mask_mismatched == True)[0][i]
-    print ttl_index
+    print '> Matching ra_jav_deg index number', ttl_index
     matched_distances = ang_sep(ra_jav_deg[mask_mismatched][i],dec_jav_deg[mask_mismatched][i], ra_ch, dec_ch)
     indices = np.where(matched_distances <= 0.001)
     check = np.array(indices)
@@ -273,6 +280,7 @@ for i in range(0,len(ra_jav_deg[mask_mismatched])):
                 print 'Matched to ' , ra_ch[indices], dec_ch[indices]
                 print 'Matched radius is', radius 
                 matched_radius[ttl_index] = radius
+                chelsea_matching_rows[ttl_index] = int(indices[0])
                 break
     if(dims[1] > 1.0):
         print 'Too many objects matched for QSO at javelin coords ra:',\
@@ -286,6 +294,7 @@ for i in range(0,len(ra_jav_deg[mask_mismatched])):
             if(dims[1] ==1.0):
                 print 'Matched to ' , ra_ch[indices], dec_ch[indices]
                 matched_radius[ttl_index] = radius
+                chelsea_matching_rows[ttl_index] = int(indices[0])
                 break
 
 # checking whether they were all increased 
@@ -293,7 +302,7 @@ mk=np.array(np.where(mask_mismatched == True))
 dims = mk.shape
 
 if( len(np.where(mask_mismatched == True)[0]) == len(np.where(matched_radius > 0.001)[0])) :
-    print 'All mismatched objects had the matching radius increased to make a match'
+    print '\n All mismatched objects had the matching radius increased to make a match'
     for i in range(0,dims[1]):
         if(np.where(matched_radius > 0.001)[0][i] == np.where(mask_mismatched == True)[0][i]):
             print 'The radius was increased from 0.001 to ', matched_radius[mask_mismatched][i]
@@ -307,6 +316,7 @@ print template.format('ra_jav','dec_jav','ra_ch','dec_ch', 'tau_jav', 'tau_ch', 
 
 #print("%5.4s %5.4s %5.4s %5.4s %5.4s %5.4s %5.4s %5.4s" %('r_j','d_j','r_c','d_c', 't_j', 't_c', 's_j', 's_c'))
 
+col0 = [None]*len(ra_jav_deg)
 col1 = np.zeros_like(ra_jav_deg)
 col2 = np.zeros_like(ra_jav_deg)
 col3= np.zeros_like(ra_jav_deg)
@@ -317,27 +327,44 @@ col7= np.zeros_like(ra_jav_deg)
 col8= np.zeros_like(ra_jav_deg)
 col9= np.zeros_like(ra_jav_deg)
 
+#for i in range(0,len(ra_jav_deg)):
+#    if mask_mismatched[i] == False :  # avoids going through those which have more than one match
+#        qso = quasar_names_ra_dec[i]
+#        col0[i] = qso[0:18]        
+#        col1[i] = ra_jav_deg[i]
+#        col2[i] = ra_ch[chelsea_matching_rows][i]
+#        col3[i] = dec_jav_deg[i]
+#        col4[i] = dec_ch[chelsea_matching_rows][i]
+#        col5[i] = tau_m[i]
+#        col6[i] = np.power(10,log_tau_med[chelsea_matching_rows][i])
+#        col7[i] = sigma_m[i]
+#        col8[i] = np.power(10,log_sigma_med[chelsea_matching_rows][i])
+#        col9[i] = col7[i] / col8[i]
+#   
+   
 for i in range(0,len(ra_jav_deg)):
-    if mask_mismatched[i] == False :  # avoids going through those which have more than one match
-        col1[i] = ra_jav_deg[i]
-        col2[i] = ra_ch[chelsea_matching_rows][i]
-        col3[i] = dec_jav_deg[i]
-        col4[i] = dec_ch[chelsea_matching_rows][i]
-        col5[i] = tau_m[i]
-        col6[i] = np.power(10,log_tau_med[chelsea_matching_rows][i])
-        col7[i] = sigma_m[i]
-        col8[i] = np.power(10,log_sigma_med[chelsea_matching_rows][i])
-        col9[i] = col7[i] / col8[i]
-        
+    qso = quasar_names_ra_dec[i]
+    col0[i] = qso[0:18]        
+    col1[i] = ra_jav_deg[i]
+    col2[i] = ra_ch[chelsea_matching_rows][i]
+    col3[i] = dec_jav_deg[i]
+    col4[i] = dec_ch[chelsea_matching_rows][i]
+    col5[i] = tau_m[i]
+    col6[i] = np.power(10,log_tau_med[chelsea_matching_rows][i])
+    col7[i] = sigma_m[i]
+    col8[i] = np.power(10,log_sigma_med[chelsea_matching_rows][i])
+    col9[i] = col7[i] / col8[i]
+   
+   
     
     #print("%7.4f  %7.4f %7.4f %7.3f %10.3f %10.3f %10.3f %10.3f %10.3f" % (col1, \
     #col2, col3, col4,col5, col6 , col7, col8, col9))
     
     
-output = 'javelin_chelsea_comparison2.txt'
-DAT= np.column_stack((col1,col2,col3,col4,col5,col6,col7,col8,col9))
+output = 'javelin_chelsea_comparison3.txt'
+DAT= np.column_stack((col0,col1,col2,col3,col4,col5,col6,col7,col8,col9))
 
-print 'We are done matching javelin and Chelseas results. We matched ', \
+print '\n We are done matching javelin and Chelseas results. We matched ', \
 len(ra_jav_deg), ' Quasars, with ', len(np.where(mask_mismatched == True)[0]),\
 ' those that required wider matching radius than 0.001 radians. Results are saved to',\
 output," with columns 'ra_jav','dec_jav','ra_ch','dec_ch', 'tau_jav', 'tau_ch', 'sigma_jav', 'sig_ch','sig_ratio' "
@@ -345,4 +372,5 @@ output," with columns 'ra_jav','dec_jav','ra_ch','dec_ch', 'tau_jav', 'tau_ch', 
 # sort the DAT column accoring to tau_javelin 
 newDAT=DAT[DAT[:,4].argsort()]
 
-np.savetxt(output,newDAT, delimiter=" ", fmt=['%7.3f', '%7.3f', '%7.3f', '%7.3f', '%10.3f', '%10.3f', '%10.3f', '%10.3f', '%10.3f'])
+np.savetxt(output,newDAT,fmt="%s")
+#, fmt=['%s','%7.3f', '%7.3f', '%7.3f', '%7.3f', '%10.3f', '%10.3f', '%10.3f', '%10.3f', '%10.3f']
