@@ -15,7 +15,7 @@ it is  failing systematically.
 
 
 """
-
+from math import e, pi, isinf
 import numpy as np 
 import matplotlib.pyplot as plt
 
@@ -40,6 +40,8 @@ sigma_jav =javch[:,7].astype(np.float)
 sigma_ch = javch[:,8].astype(np.float)
 sig_rat = javch[:,9].astype(np.float)
 
+#javch_stats=[qso_name, ra_jav, ra_ch, dec_jav , dec_ch, tau_jav, tau_ch, sigma_jav, sigma_ch, sig_rat]
+
 print 'We are now retrieving stats data for each matched quasar...'
 
 # initiate stats arrays
@@ -53,9 +55,11 @@ avg_err_ttl = np.zeros_like(ra_jav)
 avg_mjd_diff = np.zeros_like(ra_jav)
 mean_time_bet_obs = np.zeros_like(ra_jav)
 
+print 'There are ', len(qso_name), ' quasars to match with stat data ' 
+
 for i in range(len(qso_name)):
     qso = qso_name[i]
-    #print qso
+    print i
     for j in range(len(lc_stats[0,:])):
         #print j
         if (lc_stats[0,j][0:18] == qso) :
@@ -69,27 +73,54 @@ for i in range(len(qso_name)):
             avg_mjd_diff[i]=lc_stats[7,j]
             mean_time_bet_obs[i]=lc_stats[8,j]
 
-stat_names=['timespan_obs','nobs_object','lc_length', 'avg_N_day',\
- 'avg_mag_ttl', 'avg_err_ttl', 'avg_mjd_diff','mean_time_betw_obs']
+#stat_names=['timespan_obs','nobs_object','lc_length', 'avg_N_day',\
+# 'avg_mag_ttl', 'avg_err_ttl', 'avg_mjd_diff','mean_time_betw_obs']
+# 
+#stat_vals = [timespan_obs,nobs_object,lc_length,avg_N_day,avg_mag_ttl,avg_err_ttl,\
+#avg_mjd_diff,mean_time_bet_obs]
+log_tau_ratio = np.log10(tau_jav / tau_ch)
+log_sigma_ratio = np.log10(sigma_jav/sigma_ch)
+
+# good_indices= np.where(map(isinf,log_tau_ratio)==False)
+
+
+# get rid of infinities : 
+#for i in range(len(log_sigma_ratio)):
+#    if map(isinf,log_sigma_ratio)[i] == True : 
+#        log_sigma_ratio[i] = -1e20
+#
+#for i in range(len(log_tau_ratio)):
+#    if map(isinf,log_tau_ratio)[i] == True : 
+#        log_tau_ratio[i] = 1e20
+        
+st = np.asarray(map(isinf,log_sigma_ratio),dtype=bool) 
+lt = np.asarray(map(isinf,log_tau_ratio),dtype=bool) 
+res = st+lt
+
+ist = np.where(st == True)
+ilt= np.where(lt ==True)
+
+ires = np.where(res == True) # this np.boolean array should contain indices 
+     # for which both st and lt  are True, i.e. either log_sigma_ratio  or log_tau_ratio  is infinite 
+
+gi = -res   # good_indices 
+
+non_inf = len(np.where(gi == True)[0])
+
+print 'Out of ', len(ra_jav),' rows, we have ', non_inf, ' of those that do not',\
+' have any infinities, and only those are saved in the txt output '
+
+print 
+DAT = np.column_stack((ra_jav[gi], ra_ch[gi], dec_jav[gi],dec_ch[gi], tau_jav[gi],\
+tau_ch[gi], log_tau_ratio[gi], sigma_jav[gi], sigma_ch[gi], sig_rat[gi], \
+log_sigma_ratio[gi], timespan_obs[gi], nobs_object[gi], lc_length[gi], \
+avg_N_day[gi], avg_mag_ttl[gi], avg_err_ttl[gi], avg_mjd_diff[gi], mean_time_bet_obs[gi] )) 
+
+# sort the DAT column accoring to col(7) : log_tau_ratio : 
  
-stat_vals = [timespan_obs,nobs_object,lc_length,avg_N_day,avg_mag_ttl,avg_err_ttl,\
-avg_mjd_diff,mean_time_bet_obs]
+newDAT=DAT[DAT[:,6].argsort()]
+
+output = 'qso_jav_chelsea_correlation_tabulated.txt'
+np.savetxt(output,newDAT,fmt="%s")
 
 
-
-for i in range(len(stat_names)):
-    plt.clf()
-    plt_title  = 'log(Tau ratio) vs log(Sigma ratio) vs' + stat_names[i]
-    plt.title(plt_title)
-    #plt.xlim((-10,20))
-    #plt.ylim((-10,10))
-    plt.xlabel('log(tau_jav / tau_ch)')
-    plt.ylabel('log(sig_jav / sig_ch)')            
-    x=np.log10(tau_jav/tau_ch)
-    y=np.log10(sig_rat)
-    z=stat_vals[i]
-    plt.scatter(x,y,c=z,cmap=plt.cm.coolwarm)
-    # plt.show()
-    fname='qso_jav_ch_corr_'+str(i)+'_'+stat_names[i]+'.png'
-    plt.savefig(fname)
-    i=i+1
