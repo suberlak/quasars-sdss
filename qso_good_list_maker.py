@@ -27,8 +27,8 @@ np.seterr(invalid='raise')
 import warnings 
 import os 
 
-directory='QSO_try/'
-names_raw=np.loadtxt(directory+'out.list',dtype=str)
+directory='QSO_S82/'
+names_raw=np.loadtxt(directory+'file.list',dtype=str)
 
 
 # check which files are empty
@@ -52,7 +52,7 @@ names=names_raw[cond_notempty]
 # of all notempty files 
 # check if there are any files with only one line of measurement
 
-cond_multline=np.empty_like(names,dtype=bool)
+
 
 for i in range(0,len(names)): 
     address=directory+names[i]

@@ -19,14 +19,14 @@ from math import e, pi, isinf
 import numpy as np 
 import matplotlib.pyplot as plt
 
-
-javelin_chelsea_comparison = 's82drw/javelin_chelsea_comparison_ALL.txt'
-lc_stats_file = 'qso_name_timespan_nobs_2.npy'
+dir_in = 's82drw/'
+band=['u','g','r','i','z']
+SDSS_javelin_files = 'javelin_SDSS_chelsea_comparison_'+band[1]+'_band.txt'
+CRTS_javelin_files = 'javelin_chelsea_comparison_ALL.txt'
+javelin_chelsea_comparison =dir_in +SDSS_javelin_fits
 
 javch =  np.loadtxt(javelin_chelsea_comparison, dtype='str')
-lc_stats = np.load(lc_stats_file)
 
-print 'We have stats data for', len(lc_stats[0,:]), ' quasars.'
 print 'We also have javelin-matched Chelsea results for ',len(javch), ' quasars.' 
 
 qso_name = javch[:,0]
@@ -40,44 +40,7 @@ sigma_jav =javch[:,7].astype(np.float)
 sigma_ch = javch[:,8].astype(np.float)
 sig_rat = javch[:,9].astype(np.float)
 
-#javch_stats=[qso_name, ra_jav, ra_ch, dec_jav , dec_ch, tau_jav, tau_ch, sigma_jav, sigma_ch, sig_rat]
 
-print 'We are now retrieving stats data for each matched quasar...'
-
-# initiate stats arrays
-
-timespan_obs = np.zeros_like(ra_jav)
-nobs_object = np.zeros_like(ra_jav)
-lc_length = np.zeros_like(ra_jav)
-avg_N_day = np.zeros_like(ra_jav)
-avg_mag_ttl = np.zeros_like(ra_jav)
-avg_err_ttl = np.zeros_like(ra_jav)
-avg_mjd_diff = np.zeros_like(ra_jav)
-mean_time_bet_obs = np.zeros_like(ra_jav)
-
-print 'There are ', len(qso_name), ' quasars to match with stat data ' 
-
-for i in range(len(qso_name)):
-    qso = qso_name[i]
-    print i
-    for j in range(len(lc_stats[0,:])):
-        #print j
-        if (lc_stats[0,j][0:18] == qso) :
-     #       print lc_stats[0,j], qso
-            timespan_obs[i]=lc_stats[1,j]
-            nobs_object[i]=lc_stats[2,j]
-            lc_length[i]=lc_stats[3,j]
-            avg_N_day[i]=lc_stats[4,j]
-            avg_mag_ttl[i] = lc_stats[5,j]
-            avg_err_ttl[i]=lc_stats[6,j]
-            avg_mjd_diff[i]=lc_stats[7,j]
-            mean_time_bet_obs[i]=lc_stats[8,j]
-
-#stat_names=['timespan_obs','nobs_object','lc_length', 'avg_N_day',\
-# 'avg_mag_ttl', 'avg_err_ttl', 'avg_mjd_diff','mean_time_betw_obs']
-# 
-#stat_vals = [timespan_obs,nobs_object,lc_length,avg_N_day,avg_mag_ttl,avg_err_ttl,\
-#avg_mjd_diff,mean_time_bet_obs]
 log_tau_ratio = np.log10(tau_jav / tau_ch)
 log_sigma_ratio = np.log10(sigma_jav/sigma_ch)
 
