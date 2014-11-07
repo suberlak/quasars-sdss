@@ -11,20 +11,23 @@ chelsea_results_SDSS_load.py
 import numpy as np
 import matplotlib.pyplot as plt
 from math import  isinf
-band = 'u'
-results  = 's82drw/javelin_SDSS_chelsea_comparison_'+band+'_band_TEST.txt'  
+
+dir_choice = ['stars_CRTS_analysis/' ]
+
+dir_in = dir_choice[0]
+dir_out = dir_choice[0]
+
+results = dir_in + 'javelin_CRTS_chain_results.txt'
 output =  np.loadtxt(results, dtype='str')
 
+files_read= output[:,0].astype(np.float)
+sigma_l = output[:,1].astype(np.float)
+sigma_m= output[:,2].astype(np.float)
+sigma_h= output[:,3].astype(np.float)
+tau_l= output[:,4].astype(np.float)
+tau_m= output[:,5].astype(np.float)
+tau_h= output[:,6].astype(np.float)
 
-ra_jav = output[:,1].astype(np.float)
-ra_ch = output[:,2].astype(np.float)
-dec_jav= output[:,3].astype(np.float)
-dec_ch= output[:,4].astype(np.float)
-tau_jav= output[:,5].astype(np.float)
-tau_ch= output[:,6].astype(np.float)
-sigma_jav= output[:,7].astype(np.float)
-sigma_ch= output[:,8].astype(np.float)
-sig_rat= output[:,9].astype(np.float)
 
 
 
@@ -32,11 +35,11 @@ sig_rat= output[:,9].astype(np.float)
 
  
 # 
-print '\n Plotting coloured hist for log_tau_ratio  vs log_sigma_ratio' 
+print '\n Plotting coloured hist for  CRTS standard stars  log_tau vs log_sigma' 
 plt.clf()
 fig1 = plt.figure()
-x=np.log10(tau_jav / tau_ch)
-y=np.log10(sigma_jav / sigma_ch)
+x=np.log10(tau_m)
+y=np.log10(sigma_m)
 
 xinf = np.asarray(map(isinf,x),dtype=bool)
 yinf = np.asarray(map(isinf,y),dtype=bool)
@@ -44,26 +47,26 @@ ttlinf = xinf + yinf
 # ttlwh = np.where(ttlinf == True)  list of good indices
 gi = -ttlinf  # good_indices 
 non_inf = len(np.where(gi == True)[0])
-print 'Out of ', len(ra_jav),' rows, we have ', non_inf, ' of those that do not',\
+print 'Out of ', len(sigma_m),' rows, we have ', non_inf, ' of those that do not',\
 ' have any infinities, and only those are used for plotting '
 
 plt.plot(x[gi],y[gi],'.r')
-nbins =300
+nbins =50
 H, xedges,yedges = np.histogram2d(x[gi],y[gi],bins=nbins)
 H = np.rot90(H)
 H = np.flipud(H)
 Hmasked = np.ma.masked_where(H==0,H)
 fig2 = plt.figure()
 plt.pcolormesh(xedges, yedges, Hmasked)
-#plt.xlim((-3,1))
-#plt.ylim((-2,1))
-title = 'SDSS quasars '+band+' band javelin vs Chelsea SDSS '+band+' band  '
+plt.xlim((-3,1))
+plt.ylim((-2,1))
+title = 'CRTS standard stars : results of Javelin DRW fitting for 50% maximum posterior distribution '
 plt.title(title)
-plt.xlabel('log_tau_ratio')
-plt.ylabel('log_sigma_ratio')
+plt.xlabel('log_tau_med')
+plt.ylabel('log_sigma_med')
 cbar = plt.colorbar()
 cbar.ax.set_ylabel('Counts')
-fname3='sdss_'+band+'_band-log_sigma_ratio_vs_log_tau_ratio_TEST.png'
+fname3=dir_out+'crts_log_sigma_vs_log_tau_.png'
 plt.savefig(fname3)
 #            
 

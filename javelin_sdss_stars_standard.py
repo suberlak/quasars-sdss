@@ -4,21 +4,23 @@ Created on Sat Oct 18 21:16:19 2014
 
 @author: suberlak
 
-Runs javelin on  SDSS Quasars, a selected band 
+Runs javelin on  SDSS standard starsdddd, a selected band 
 
 (filenames start as u_ , g_, etc.)
 
-from QSO_SDSS_JAV
+IMPORTANT IMPORTANT    
+
+UNFINISHED, IT'S JUST A COPY-PASTE FROM SDSS QSO'S CODE ! 
 
 """
 import numpy as np
 from javelin.zylc import get_data 
 from javelin.lcmodel import Cont_Model
 
-dir_choice=['QSO_try2/', 'QSO_S82/', 'QSO_SDSS_JAV/','QSO_SDSS_chains/']
+dir_choice=['stars_SDSS/','stars_SDSS_try/','stars_SDSS_chains/','QSO_try2/', 'QSO_S82/', 'QSO_SDSS_JAV/','QSO_SDSS_chains/']
 
-dir_input=dir_choice[2]
-dir_output=dir_choice[3]
+dir_input=dir_choice[1]
+dir_output=dir_choice[2]
 band= 'z_band'
 
 

@@ -10,18 +10,16 @@ Loading chains bit .
 
 REQUIREMENTS:
 
-Before running you need to update the chain list file (in terminal): 
+Before running you need to update the chain list file (in terminal)
 
-> ls new7_*_chain.dat > chains_list_new8.ls  
 
 NOTE:
 
 The chain name has to have the form  
 
-xxx7_123456.78+123456.7_chain.dat , 
+chain='ch_xxxxxxxxx.dat_chain.dat'  
+because we are taking the star name from  chain[3:-14]
 
-because the ra and dec of quasar is taken from the name string
-> quasar_name = files[j][5:23]
 
 OUTPUT: 
 
@@ -40,19 +38,19 @@ BUT FOR CRTS IT IS DIFFERENT  !!!
 """
 import numpy as np 
 
-dir_choice = ['QSO_try/CRTS_chains_ALL/','QSO_SDSS_chains/','QSO_SDSS_analysis/','QSO_SDSS_chains/test/']
+dir_choice = ['stars_CRTS_chains/','stars_CRTS_analysis/' ]
 
-dir_in = dir_choice[3]
-dir_out = dir_choice[2]
-band = 'u'
+dir_in = dir_choice[0]
+dir_out = dir_choice[1]
+
 
 '''
 NOTE : must make a chain_list_  ... .ls  file before running the program!
-in QSO_SDSS_chains/  run :
-ls ch_u_*.txt_chain.dat > chain_list_u.ls
+in stars_CRTS_chains/  run :
+ls ch_*.dat_chain.dat > chain_list.ls
 
 '''
-filename = dir_in + 'chain_list_'+band+'.ls'
+filename = dir_in + 'chain_list.ls'
 files=np.loadtxt(filename,dtype=str)
 
 # initialise storing vecfiles_rtors
@@ -114,18 +112,16 @@ for j in range(len(files)):   #
     tau_l = np.append(tau_l, exp_tau[0])
     tau_m = np.append(tau_m, exp_tau[1])
     tau_h = np.append(tau_h, exp_tau[2])
-    quasar_name = files[j][5:]           
-    print 'band', band, quasar_name
-    files_read=np.append(files_read,quasar_name)
+    star_name = files[j][3:-14]           
+    print 'Star name', star_name
+    files_read=np.append(files_read,star_name)
     
 ## save all the information to output file
-
-fout = dir_out + 'javelin_SDSS_chain_results_'+band+'_band_TEST.txt'
+print 'We have retrieved chain results data for ', len(sigma_l) ,' CRTS stars' 
+fout = dir_out + 'javelin_CRTS_chain_results.txt'
 DAT= np.column_stack((files_read, sigma_l, sigma_m, sigma_h, tau_l, tau_m, tau_h))
 
 # sort the DAT column accoring to QSO names 
 newDAT=DAT[DAT[:,0].argsort()]
 
 np.savetxt(fout,newDAT, delimiter=" ", fmt="%s")
-
-print 'We saved the result to file ', fout
