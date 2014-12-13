@@ -4,7 +4,7 @@ Created on Sat Oct 18 12:53:41 2014
 
 @author: suberlak
 
-A program to preprocess SDSS qso files, to provide the input required by javelin  
+A program to preprocess SDSS s82 qso files, to provide the input required by javelin  
 
 Reads - in files that have 16 columns :
 eg 
@@ -16,29 +16,37 @@ and ra_median (15) , dec_median (16)
 
 and save as 1 file per band 
 
+
+WARNING!!!!
+
+THIS VERSION  SUBTRACTS THE MEAN VALUE FROM THE MAG MEASUREMENT : CF. LINES 74-78
+
 """
 
 import numpy as np
 
-dir_choice=['QSO_try2/', 'QSO_S82/', 'QSO_SDSS_JAV/']
+dir_choice=['QSO_try2/', 'QSO_S82/', 'QSO_SDSS_JAV/', 'QSO_SDSS_JAV/MEAN_SUB/']
 
 dir_input=dir_choice[1]
-dir_output=dir_choice[2]
+dir_output=dir_choice[3]
 names=np.loadtxt(dir_input+'out_good.list',dtype=str)
 
 ra_list = np.zeros_like(names, dtype=float)
 dec_list = np.zeros_like(names, dtype=float)
 
 for j in range(len(names)):   #
+    # loop through files with qso data
+    # each file contains all filters
  
+
     address=dir_input+names[j]
     data=np.loadtxt(address)
     ra_list[j]  = data[0,15]
     dec_list[j] = data[0,16]
     # cond_good_data=np.empty_like(data[:,0],dtype=bool)    
     
-    mjds = [0,0,0,0,0]
-    mags = [0,0,0,0,0]
+    mjds = [0,0,0,0,0]   
+    mags = [0,0,0,0,0]   # it's a big structure, to hold all  mags for all filters : 5 * 9258
     mag_errs = [0,0,0,0,0]
     
     mjd_cols = [0,3,6,9,12]
@@ -47,14 +55,14 @@ for j in range(len(names)):   #
     prefix = ['u','g','r','i','z']
     
     for l in range(len(mag_cols)):
-        # checking whether a given mag does not have a bad mesaurement 
-         
+        # loop through  columns - it's in fact loop through filters 
         col = mag_cols[l]
         #print col
         cond_good_data=np.ones_like(data[:,0],dtype=bool)
         #print 'Original data length ', len(data[:,col])
         for k in range(len(data)):
             if( data[k,col] < 1.0  or data[k,col] > 40):
+                # checking whether a given mag does not have a bad mesaurement 
                 # print data[k,col], 'is < 1.0 or > 40'
             
                 cond_good_data[k] = False
@@ -62,6 +70,10 @@ for j in range(len(names)):   #
         mjds[l] = data[cond_good_data,mjd_cols[l]]     
         mags[l] = data[cond_good_data,mag_cols[l]] 
         mag_errs[l] = data[cond_good_data,err_cols[l]]
+        MEAN = np.mean(mags[l])
+        
+        # SUBTRACTING THE MEAN VALUE   
+        mags[l] = mags[l]-MEAN
  
         # saving to a file result for each band 
         col_data = np.column_stack((mjds[l],mags[l],mag_errs[l]))

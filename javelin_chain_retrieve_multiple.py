@@ -40,9 +40,9 @@ BUT FOR CRTS IT IS DIFFERENT  !!!
 """
 import numpy as np 
 
-dir_choice = ['QSO_try/CRTS_chains_ALL/','QSO_SDSS_chains/','QSO_SDSS_analysis/','QSO_SDSS_chains/test/']
+dir_choice = ['QSO_try/CRTS_chains_ALL/','QSO_SDSS_chains/','QSO_SDSS_analysis/','QSO_SDSS_chains/test/', 'QSO_SDSS_chains/MEAN_SUB/']
 
-dir_in = dir_choice[3]
+dir_in = dir_choice[4]
 dir_out = dir_choice[2]
 band = 'u'
 
@@ -66,7 +66,7 @@ tau_h =  np.empty(0,dtype=float)
 files_read = np.empty(0,dtype=str)
 
 # load multiple chains 
-for j in range(len(files)):   #
+for j in range(len(files)):   #len(files)
     fchain = dir_in+files[j]
     flatchain= np.genfromtxt(fchain)
     flatchain_whole = np.copy(flatchain)
@@ -120,7 +120,7 @@ for j in range(len(files)):   #
     
 ## save all the information to output file
 
-fout = dir_out + 'javelin_SDSS_chain_results_'+band+'_band_TEST.txt'
+fout = dir_out + 'javelin_SDSS_chain_results_'+band+'_band_MEAN_SUB.txt'
 DAT= np.column_stack((files_read, sigma_l, sigma_m, sigma_h, tau_l, tau_m, tau_h))
 
 # sort the DAT column accoring to QSO names 

@@ -15,12 +15,17 @@ import numpy as np
 from javelin.zylc import get_data 
 from javelin.lcmodel import Cont_Model
 
-dir_choice=['QSO_SDSS_JAV/','QSO_SDSS_chains/test/', 'QSO_SDSS_JAV/','QSO_SDSS_chains/']
+dir_choice=['QSO_SDSS_JAV/','QSO_SDSS_JAV/MEAN_SUB/','QSO_SDSS_chains/test/', 'QSO_SDSS_chains/MEAN_SUB/','QSO_SDSS_chains/']
 
-dir_input=dir_choice[0]
-dir_output=dir_choice[1]
-band= 'u_band.ls_pt6'
 
+# 1,3 are a choice for running javelin on Mean-subtracted QSO's 
+# 0,2 are a choice for standard QSO's , but with set_Prior = False 
+dir_input=dir_choice[1]  #0
+dir_output=dir_choice[3] #2
+band= 'u_band.ls_pt10'
+
+
+#band= 'u_band.ls_pt0'
 
 
 names=np.loadtxt(dir_input+band,dtype=str)
@@ -87,7 +92,7 @@ np.where(names_upd == 'i_2104791.txt')
 #
 
 #
-for i in range(0,len(names_upd)):  # 
+for i in range(len(names_upd)):  # 
     filename=dir_input+names_upd[i]
     print '\nWorking file', filename, i+1, ' out of ', len(names_upd) , ' from ', band
     data = get_data(filename,names=["Continuum"])

@@ -9,23 +9,25 @@ split the long lits into several shorter lists
 """
 
 import numpy as np
-dir_choice=['stars_CRTS/0/','QSO_SDSS_JAV/']
-d=dir_choice[1]
+dir_choice=['stars_CRTS/0/','QSO_SDSS_JAV/', 'QSO_SDSS_JAV/MEAN_SUB/', 'qso_drw_upd/', 'qso_drw_long_LC/', 'qso_drw_medium_LC/']
+d=dir_choice[5]
 
 # for stars  :  ls=np.loadtxt(d+'out_good.list',dtype=str)
 
-# for quasars : 
-band = 'u_band.ls'
-ls = np.loadtxt(d+band,dtype=str)
+# for quasars : pre = 'u_band.ls'
 
-length=1000
+# for drw
+pre = 'drw_err3.list'
+ls = np.loadtxt(d+pre,dtype=str)
+
+length=201
 
 j=0
 
 for i in range(len(ls)/length + 1):
-    filename = d+band+'_pt'+str(i)
-    print filename
-    print j
+    filename = d+pre+'_pt'+str(i)
+    print '\n',filename
+    #print j
     
     if j+length < len(ls): 
         part_ls = ls[j:j+length]

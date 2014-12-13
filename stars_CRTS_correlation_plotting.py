@@ -49,24 +49,24 @@ gi = -ttlinf  # good_indices
 non_inf = len(np.where(gi == True)[0])
 print 'Out of ', len(sigma_m),' rows, we have ', non_inf, ' of those that do not',\
 ' have any infinities, and only those are used for plotting '
-
+plt.clf()
 plt.plot(x[gi],y[gi],'.r')
-nbins =50
+nbins =200
 H, xedges,yedges = np.histogram2d(x[gi],y[gi],bins=nbins)
 H = np.rot90(H)
 H = np.flipud(H)
 Hmasked = np.ma.masked_where(H==0,H)
 fig2 = plt.figure()
 plt.pcolormesh(xedges, yedges, Hmasked)
-plt.xlim((-3,1))
-plt.ylim((-2,1))
-title = 'CRTS standard stars : results of Javelin DRW fitting for 50% maximum posterior distribution '
+plt.xlim((-3,3))
+plt.ylim((-1.5,1))
+title = 'CRTS '+str(non_inf)+' standard stars : results of Javelin DRW fitting \nfor 50% maximum posterior distribution '
 plt.title(title)
 plt.xlabel('log_tau_med')
 plt.ylabel('log_sigma_med')
 cbar = plt.colorbar()
 cbar.ax.set_ylabel('Counts')
-fname3=dir_out+'crts_log_sigma_vs_log_tau_.png'
+fname3=dir_out+'crts_log_sigma_vs_log_tau_20382.png'
 plt.savefig(fname3)
 #            
 

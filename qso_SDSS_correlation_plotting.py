@@ -12,7 +12,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import  isinf
 band = 'u'
-results  = 's82drw/javelin_SDSS_chelsea_comparison_'+band+'_band_TEST.txt'  
+
+# set_prior  = FALSE  in Javelin  
+#results  = 's82drw/javelin_SDSS_chelsea_comparison_'+band+'_band_TEST1_with_z.txt'  # TEST is with NO PRIOR
+
+# set_prior = TRUE in Javelin
+results='s82drw/javelin_SDSS_chelsea_comparison_u_band_with_z.txt'  # standard setting is WITH PRIOR
+#results  = 's82drw/javelin_SDSS_chelsea_comparison_'+band+'_band_MEAN_SUB_with_z.txt' # no prior, mean-subtracted fitting, with a column for z 
+fname3='sdss_'+band+'_band-log_sigma_ratio_vs_log_tau_ratio_NO_PRIOR_MEAN_SUB.png'
+fname4='sdss_'+band+'_band-log_sigma_ratio_vs_log_tau_ratio_NO_PRIOR_MEAN_SUB_redshift.png'
+fname5='sdss_'+band+'_band-log_sigma_vs_log_tau_CHELSEA.png'
+#fname6='sdss_'+band+'_band-log_sigma_vs_log_tau_NO_PRIOR_MEAN_SUB.png'
+
 output =  np.loadtxt(results, dtype='str')
 
 
@@ -25,18 +36,101 @@ tau_ch= output[:,6].astype(np.float)
 sigma_jav= output[:,7].astype(np.float)
 sigma_ch= output[:,8].astype(np.float)
 sig_rat= output[:,9].astype(np.float)
+redshift = output[:,10].astype(np.float)
 
 
-
-# MORE AUTOMATIC WAY   
+# HISTOGRAM OF  TAU AND SIGMA RATIOS   : no redshift correction
 
  
 # 
-print '\n Plotting coloured hist for log_tau_ratio  vs log_sigma_ratio' 
+#print '\n Plotting coloured hist for log_tau_ratio  vs log_sigma_ratio' 
+#plt.clf()
+#fig1 = plt.figure()
+#x = np.log10(tau_jav / tau_ch)
+#y = np.log10(sigma_jav / sigma_ch)
+#
+#xinf = np.asarray(map(isinf,x),dtype=bool)
+#yinf = np.asarray(map(isinf,y),dtype=bool)
+#ttlinf = xinf + yinf
+## ttlwh = np.where(ttlinf == True)  list of good indices
+#gi = -ttlinf  # good_indices 
+#non_inf = len(np.where(gi == True)[0])
+#print 'Out of ', len(ra_jav),' rows, we have ', non_inf, ' of those that do not',\
+#' have any infinities, and only those are used for plotting '
+#
+#plt.plot(x[gi],y[gi],'.r')
+#nbins =150
+#
+#H, xedges,yedges = np.histogram2d(x[gi],y[gi],bins=nbins)
+#H = np.rot90(H)
+#H = np.flipud(H)
+#Hmasked = np.ma.masked_where(H==0,H)
+#fig2 = plt.figure()
+#plt.pcolormesh(xedges, yedges, Hmasked)
+#plt.xlim((-2,2))
+#plt.ylim((-1.5,1.5))
+#
+#title1 =  'SDSS quasars : Javelin vs Chelsea, '+band+' band for '+str(non_inf)+ ' objects'
+#plt.title(title1)
+#plt.axhline(0)
+#plt.axvline(0)
+#plt.xlabel('log(tau_jav / tau_ch)')
+#plt.ylabel('log(sigma_jav / sigma_ch)')
+#cbar = plt.colorbar()
+#cbar.ax.set_ylabel('Counts')
+#plt.savefig(fname3)
+#     
+
+# HISTOGRAM OF  TAU AND SIGMA RATIOS   : with redshift correction       
+
+#print '\n Plotting coloured hist for log_tau_ratio  vs log_sigma_ratio with redshift correction' 
+#plt.clf()
+#fig1 = plt.figure()
+#x = np.log10(tau_jav / ((1+redshift)*tau_ch))
+#y = np.log10(sigma_jav / sigma_ch)
+#
+#xinf = np.asarray(map(isinf,x),dtype=bool)
+#yinf = np.asarray(map(isinf,y),dtype=bool)
+#ttlinf = xinf + yinf
+## ttlwh = np.where(ttlinf == True)  list of good indices
+#gi = -ttlinf  # good_indices 
+#non_inf = len(np.where(gi == True)[0])
+#print 'Out of ', len(ra_jav),' rows, we have ', non_inf, ' of those that do not',\
+#' have any infinities, and only those are used for plotting '
+#
+#plt.plot(x[gi],y[gi],'.r')
+#nbins =200
+#
+#H, xedges,yedges = np.histogram2d(x[gi],y[gi],bins=nbins)
+#H = np.rot90(H)
+#H = np.flipud(H)
+#Hmasked = np.ma.masked_where(H==0,H)
+#fig2 = plt.figure()
+#plt.pcolormesh(xedges, yedges, Hmasked)
+#plt.xlim((-2,2))
+#plt.ylim((-1.5,1.5))
+#title = 'SDSS quasars : Javelin vs Chelsea, '+band+' band for '+str(non_inf)+ ' objects \n redshift corrected '
+#plt.title(title)
+#plt.axhline(0)
+#plt.axvline(0)
+#plt.xlabel('log(tau_jav / tau_ch)')
+#plt.ylabel('log(sigma_jav / sigma_ch)')
+#cbar = plt.colorbar()
+#cbar.ax.set_ylabel('Counts')
+#plt.savefig(fname4)
+##     
+#
+#print ' Files saved are',fname3, ' and ', fname4
+# 
+ 
+# HISTOGRAM  OF   LOG SIGMA  VS LOG TAU,  LIKE FIG 13 FROM MCLEOD+2011 
+
+
+print '\n Plotting coloured hist for log_tau  vs log_sigma  for javelin fitting ' 
 plt.clf()
 fig1 = plt.figure()
-x=np.log10(tau_jav / tau_ch)
-y=np.log10(sigma_jav / sigma_ch)
+x = np.log10(sigma_ch)
+y = np.log10(tau_ch)
 
 xinf = np.asarray(map(isinf,x),dtype=bool)
 yinf = np.asarray(map(isinf,y),dtype=bool)
@@ -48,25 +142,28 @@ print 'Out of ', len(ra_jav),' rows, we have ', non_inf, ' of those that do not'
 ' have any infinities, and only those are used for plotting '
 
 plt.plot(x[gi],y[gi],'.r')
-nbins =300
+nbins =100
+
 H, xedges,yedges = np.histogram2d(x[gi],y[gi],bins=nbins)
 H = np.rot90(H)
 H = np.flipud(H)
 Hmasked = np.ma.masked_where(H==0,H)
 fig2 = plt.figure()
 plt.pcolormesh(xedges, yedges, Hmasked)
-#plt.xlim((-3,1))
-#plt.ylim((-2,1))
-title = 'SDSS quasars '+band+' band javelin vs Chelsea SDSS '+band+' band  '
+plt.xlim((-1.5,0.1))
+plt.ylim((-1,4.3))
+title = 'SDSS quasars : Chelsea results,  '+band+' band for '+str(non_inf)+ ' objects '
 plt.title(title)
-plt.xlabel('log_tau_ratio')
-plt.ylabel('log_sigma_ratio')
+#plt.axhline(0)
+#plt.axvline(0)
+plt.ylabel(r'$\log_{10}{ \, \tau_{ch}}$',fontsize=15)
+plt.xlabel(r'$\log_{10}{ \, \sigma_{ch}}$',fontsize=15)
 cbar = plt.colorbar()
 cbar.ax.set_ylabel('Counts')
-fname3='sdss_'+band+'_band-log_sigma_ratio_vs_log_tau_ratio_TEST.png'
-plt.savefig(fname3)
-#            
-
+plt.savefig(fname5)
+print 'File saved is ', fname5 
+ 
+ 
 ### SINGLE HISTOGRAMS 
 #
 #for i in range(5,6):
