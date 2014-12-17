@@ -1,0 +1,19 @@
+
+\documentclass[11pt]{article}
+\usepackage[left=40pt,right=40pt,top=30pt,bottom=30pt]{geometry}
+\usepackage{natbib}                % See geometry.pdf to learn the
+%[left=20pt,right=20pt,top=20pt,bottom=15pt]layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+
+% for matrix2latex output
+\providecommand{\e}[1]{\ensuremath{\times 10^{#1}}}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{caption}
+
+\usepackage{amssymb}
+\usepackage{epstopdf}
+
