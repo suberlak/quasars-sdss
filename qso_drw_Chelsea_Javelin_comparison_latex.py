@@ -16,6 +16,7 @@ obtaining the stats takes about 20 sec of computational time
 import numpy as np 
 from matrix2latex import matrix2latex
         
+definition = 2.0
         
 results_ch_arr = np.loadtxt('drw_chelsea_results_stats.txt', dtype = 'str')
 print 'Chelsea results : S (1,2,3), M (1,2,3) , L(1,2,3)', results_ch_arr
@@ -82,7 +83,24 @@ f.writelines(lines)
 f.write(t)
 f.write('\n')
 
-f.write('\section{Javelin results}')
+f.write('\section{Javelin results}\n')
+if definition == 1.0 :     
+    expl = r'Using the definition  assuming that $\sigma$ is measured in '+\
+    r'$[mags/\sqrt{year}]$, so that with $\tau$ in  $[days]$ we have'+\
+    r' $\hat{\sigma} [mags/\sqrt{year}]= \sigma \cdot \sqrt'+\
+    r'{2 \cdot 365 / \tau}$, where $\sigma$ and $\tau$ are taken'+\
+    r' as 50th percentile of the posterior distribution. Here $K = \tau'+\
+    r' \cdot \sqrt{\sigma * \sqrt{2 \cdot 365}}$ ' 
+    
+if definition == 2.0 : 
+    expl = r'Using the definition assuming that $\sigma$ is measured in '+\
+    r'$[mags/\sqrt{day}]$ (a hypothesis), so with $\tau$ in $[days]$'+\
+    r' we have  $\hat{\sigma} = \sigma \cdot \sqrt'+\
+    r'{2 /\tau}$, where $\sigma$ and $\tau$ are taken'+\
+    r' as 50th percentile of the posterior distribution. Here $K = \tau'+\
+    r' \cdot \sqrt{\sigma * \sqrt{2}}$'         
+
+f.write(expl)
 f.write(u)
 lines=['\n', r'\end{document}', '\n']
 f.writelines(lines)

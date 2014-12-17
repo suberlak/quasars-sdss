@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from math import  isinf
 
-definition = 1.0
+definition = 2.0
 
 results_ch = ['drw_S_M_L_Chelsea_results/fitsshort.dat',\
 'drw_S_M_L_Chelsea_results/fitsmed.dat',\
@@ -34,10 +34,10 @@ results_ch = ['drw_S_M_L_Chelsea_results/fitsshort.dat',\
 length_ch = ['S', 'M' , 'L ']
 
 
-results_jav = ['qso_drw_analysis/javelin_drw_test_chain_results_no_prior_all.txt',\
-'qso_drw_analysis/javelin_drw_test_chain_results_with_prior_all.txt',\
-'qso_drw_medium_analysis/javelin_drw_test_chain_results_no_prior_all.txt',\
-'qso_drw_medium_analysis/javelin_drw_test_chain_results_with_prior_all.txt']
+results_jav = ['qso_drw_analysis/javelin_drw_test_chain_results_no_prior_NEW.txt',\
+'qso_drw_analysis/javelin_drw_test_chain_results_with_prior_NEW.txt',\
+'qso_drw_medium_analysis/javelin_drw_test_chain_results_no_prior_NEW.txt',\
+'qso_drw_medium_analysis/javelin_drw_test_chain_results_with_prior_NEW.txt']
 length_jav = ['S','S','M','M']
 ke = [3,3,2,2]  # how many error types there is per length type... 
 
