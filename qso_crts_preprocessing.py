@@ -126,8 +126,8 @@ for obj in qso_chosen:
         assert len(mjd_arr) == len(avg_mags) == len(avg_err_weights) == \
         len(avg_err_rms) == len(Nobs)
         
-        #np.savetxt(name_out1, np.column_stack((mjd_arr,avg_mags, avg_err_rms)),fmt='%11.4f')
-        #np.savetxt(name_out2, np.column_stack((mjd_arr,avg_mags, avg_err_weights)),fmt='%11.4f')
+        np.savetxt(name_out1, np.column_stack((mjd_arr,avg_mags, avg_err_rms)),fmt='%11.4f')
+        np.savetxt(name_out2, np.column_stack((mjd_arr,avg_mags, avg_err_weights)),fmt='%11.4f')
         processed_files = np.append(processed_files, name_out1[len(dir_err_rms):])
     
     counter += 1    
