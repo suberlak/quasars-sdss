@@ -38,6 +38,7 @@ d = 1
 
 filelist = dir_in[d] +'out.list'
 names = np.loadtxt(filelist, dtype=str)
+p = 0
 with_prior = ['Yes','No']
 
 
@@ -51,10 +52,10 @@ for i in range(2,len(names)):  #len(names)
      file.write('#!/bin/csh\n')
      file.write('source /astro/users/suberlak/.cshrc\n')
      s2 = 'echo python ' +root+'javelin_drw_condor.py'+' '+ \
-         names[i] + ' ' + root+dir_in[d] +' '+ root+dir_out[d] +' '+ with_prior[d]  +'\n'   
+         names[i] + ' ' + root+dir_in[d] +' '+ root+dir_out[d] +' '+ with_prior[p]  +'\n'   
      file.write(s2)
      s = 'python ' +root+'javelin_drw_condor.py'+' '+ \
-         names[i] + ' ' + root+dir_in[d] +' '+ root+dir_out[d] +' '+ with_prior[d]     +'\n'   
+         names[i] + ' ' + root+dir_in[d] +' '+ root+dir_out[d] +' '+ with_prior[p]     +'\n'   
      file.write(s)
      file.close()
      
