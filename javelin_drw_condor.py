@@ -51,7 +51,7 @@ print '\nWorking file', filename
 data = get_data(filename,names=["Continuum"])
 cont=Cont_Model(data)
 start=len(dir_input)
-chain_name = dir_output+'ch_'+filename[len(dir_input):-4]+'_chain.dat'
+chain_name = dir_output+'ch_'+filename[len(dir_input):-4]+'_chain.dat'  # -4 cuts off the .txt
 print 'Chain name will be ', chain_name
 
 if prior_on == ('Yes' or 'yes') : 
