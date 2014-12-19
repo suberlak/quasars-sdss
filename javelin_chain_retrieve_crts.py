@@ -120,7 +120,7 @@ for j in range(len(files)):   #len(files)
     
 ## save all the information to output file
 
-fout = dir_out + 'javelin_CRTS_SDSS_chain_results'+err+'.txt'
+fout = dir_out + 'javelin_CRTS_chain_results'+err+'.txt'
 DAT= np.column_stack((files_read, sigma_l, sigma_m, sigma_h, tau_l, tau_m, tau_h))
 
 # sort the DAT column accoring to QSO names 
