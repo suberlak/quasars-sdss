@@ -82,7 +82,7 @@ for obj in names[cond_multline]:
 				    # preparing an array in advance to store 
     				    # is way more efficient
     avg_err = np.zeros_like(days).astype(float)
-    chi2arr = np.zeros_like(days).astype(float)
+    chi2_arr = np.zeros_like(days).astype(float)
     mjd_arr = np.zeros_like(days).astype(float)
     Nobs = np.zeros_like(days).astype(float)
     print 'obj= ',counter, 'For Quasar', obj
@@ -102,7 +102,7 @@ for obj in names[cond_multline]:
         mean_mjd = np.mean(mjd[condition])
         mjd_arr[i] = mean_mjd 
         chi2 = np.sum(weights*(np.power((mags[condition]-avgmag),2.0))) 
-        chi2arr[i] = chi2
+        chi2_arr[i] = chi2
         # print 'i = ', i, 'On day MJD', day, 'N obs=', N, 'avgmag=', avgmag, \
         # 'avg_err=',error, 'chi2=',chi2
     
@@ -110,35 +110,10 @@ for obj in names[cond_multline]:
     name_out=directory+'out_'+obj[:18]+'.txt'
     print 'Saved', name_out
     np.savetxt(name_out, np.column_stack((mjd_arr,avg_mags,avg_err,Nobs,\
-    chi2arr)),fmt='%11.4f')
+    chi2_arr)),fmt='%11.4f')
     counter += 1    
     print '  ' 
 
-# using here only notempy single line files ( I  don't think that would have any
-# practical use, but is necessary for consistent treatment of the dataset
-
-print 'Now calculating single line measurements'
-counter = 0
-for obj in names[np.logical_not(cond_multline)]:
-    address=directory+obj
-    data=np.loadtxt(address)
-
-    mjd = data[0]
-    mag = data[1]
-    err = data[2]
-    Nobs=1
-    print 'obj= ',counter, 'For Quasar', obj
-    weight=1.0 / ( err * err) 
-    error = 1.0 / np.sqrt(weight)
-    chi2 = 1.0
-      
-    # save output 
-    name_out=directory+'out_'+obj[:18]+'.txt'
-    print 'Saved', name_out
-    np.savetxt(name_out, np.column_stack((mjd,mag,error,Nobs,\
-    chi2)),fmt='%11.4f')
-    counter += 1    
-    print '  ' 
 
 # create a list of all output files, for other programs to use 
 # command = 'ls '+directory+'out_* '+'> '+directory+'out.list'
