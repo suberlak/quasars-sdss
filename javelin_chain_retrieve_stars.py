@@ -50,7 +50,7 @@ in stars_CRTS_chains/  run :
 ls ch_*.dat_chain.dat > chain_list.ls
 
 '''
-filename = dir_in + 'chain_list.ls'
+filename = dir_in + 'chain.list'
 files=np.loadtxt(filename,dtype=str)
 
 # initialise storing vecfiles_rtors
@@ -88,23 +88,16 @@ for j in range(len(files)):   #
         vsort = np.sort(flatchain[:,i])  # sorts the array along either sigma or tau dimension 
         hpd[:,i] = vsort[medlowhig] # picks out values at the positions for the 
                                     # points at 15%, 50%, and 84% of the maximum posterior distribution
-        if set_verbose :
-            print("HPD of %s"%vars[i])
-            if i < 2 :
-                # tau and sigma are stored as natural logs - other variables may not 
-                print("low: %8.3f med %8.3f hig %8.3f"%tuple(np.exp(hpd[:,i])))
-            else :
-                print("low: %8.3f med %8.3f hig %8.3f"%tuple(hpd[:,i]))
                         
     
-    sigma_lmh = hpd[:,0] 
-    tau_lmh = hpd[:,1]
+    ln_sigma_lmh = hpd[:,0] 
+    ln_tau_lmh = hpd[:,1]
     
-    print 'HPD of sigma', np.exp(sigma_lmh)
-    print 'HPD of tau', np.exp(tau_lmh)
+    print 'HPD of sigma', np.exp(ln_sigma_lmh)
+    print 'HPD of tau', np.exp(ln_tau_lmh)
 
-    exp_sigma = np.exp(sigma_lmh)
-    exp_tau = np.exp(tau_lmh)
+    exp_sigma = np.exp(ln_sigma_lmh)
+    exp_tau = np.exp(ln_tau_lmh)
     
     sigma_l = np.append(sigma_l,exp_sigma[0])
     sigma_m = np.append(sigma_m,exp_sigma[1])
@@ -117,7 +110,7 @@ for j in range(len(files)):   #
     files_read=np.append(files_read,star_name)
     
 ## save all the information to output file
-print 'We have retrieved chain results data for ', len(sigma_l) ,' CRTS stars' 
+print 'We have retrieved chain results data for ', len(sigma_l) ,' CRTS stars out of ', len(files)
 fout = dir_out + 'javelin_CRTS_chain_results.txt'
 DAT= np.column_stack((files_read, sigma_l, sigma_m, sigma_h, tau_l, tau_m, tau_h))
 
