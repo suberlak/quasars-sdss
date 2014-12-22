@@ -40,7 +40,7 @@ import numpy as np
 
 dir_choice = ['stars_CRTS_err_rms_chains/','stars_CRTS_err_w_chains/','stars_CRTS_analysis/' ]
 
-err = 0  # or 1 
+err = 1  # or 1 
 
 if err ==0 : 
     err_txt = 'err_rms'
