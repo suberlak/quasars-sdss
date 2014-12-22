@@ -38,10 +38,17 @@ BUT FOR CRTS IT IS DIFFERENT  !!!
 """
 import numpy as np 
 
-dir_choice = ['stars_CRTS_chains/','stars_CRTS_analysis/' ]
+dir_choice = ['stars_CRTS_err_rms_chains/','stars_CRTS_err_w_chains/','stars_CRTS_analysis/' ]
 
-dir_in = dir_choice[0]
-dir_out = dir_choice[1]
+err = 0  # or 1 
+
+if err ==0 : 
+    err_txt = 'err_rms'
+else: 
+    err_txt = 'err_w'
+    
+dir_in = dir_choice[err]
+dir_out = dir_choice[2]
 
 
 '''
@@ -111,8 +118,9 @@ for j in range(len(files)):   #
     
 ## save all the information to output file
 print 'We have retrieved chain results data for ', len(sigma_l) ,' CRTS stars out of ', len(files)
-fout = dir_out + 'javelin_CRTS_chain_results.txt'
+fout = dir_out + 'javelin_CRTS_stars_'+err_txt+'_chain_results.txt'
 DAT= np.column_stack((files_read, sigma_l, sigma_m, sigma_h, tau_l, tau_m, tau_h))
+print 'We saved the results to ', fout 
 
 # sort the DAT column accoring to QSO names 
 newDAT=DAT[DAT[:,0].argsort()]
