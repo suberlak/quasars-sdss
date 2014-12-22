@@ -25,7 +25,7 @@ dir_in = ['stars_CRTS_err_rms_chains/', 'stars_CRTS_err_w_chains/']
 dir_out = 'stars_CRTS_analysis/'
 
 args = sys.argv
-err = float(args[1])
+err = int(args[1])
 
 if err ==0 : 
     err_txt = 'err_rms'
