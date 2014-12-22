@@ -31,7 +31,7 @@ if err ==0 :
 else: 
     err_txt = 'err_w'
     
-chain_results = dir_in_out[err]+ 'javelin_CRTS_stars_'+err_txt+'_chain_results.txt'  
+chain_results = dir_in_out+ 'javelin_CRTS_stars_'+err_txt+'_chain_results.txt'  
 
 data = np.loadtxt(chain_results,dtype='str' )
 
