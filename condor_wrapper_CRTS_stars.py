@@ -34,7 +34,7 @@ dir_in = ['stars_CRTS_processed_err_rms/','stars_CRTS_processed_err_w/']
 dir_cond = ['stars_CRTS_condor_err_rms/', 'stars_CRTS_condor_err_w/']
 dir_out = ['stars_CRTS_err_rms_chains/','stars_CRTS_err_w_chains/']
 
-d = 0
+d = 1
 
 filelist = dir_in[d] +'out.list'
 names = np.loadtxt(filelist, dtype=str)
