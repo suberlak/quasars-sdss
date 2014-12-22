@@ -125,9 +125,9 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
     if title == 'ch' : 
         plt.ylabel(y_label_ch,fontsize=15)
         plt.xlabel(x_label_ch,fontsize=15)
-        title_hist = 'S82 SDSS Chelsea results, '+ str(number) + ', i.e.  ' + str(percent)+ '% points'
+        title_hist = 'S82 SDSS Chelsea results, '+ str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
         fname = dir_out + 'Chelsea_s82_SDSS_matched.png' 
-    else:
+    if title == 'jav' :
         plt.ylabel(y_label_jav,fontsize=15)
         plt.xlabel(x_label_jav,fontsize=15)
         if err_choice == 0 : 
@@ -135,10 +135,19 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
         else: 
             err = 'err_w'
         
-        title_hist = 'CRTS Javelin results,'+err+', '+ str(number) + ', i.e.  ' + str(percent)+ '% points'
+        title_hist = 'CRTS Javelin results,'+err+', '+ str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
         fname = dir_out + 'CRTS_Javelin_matched_'+err+'.png'
+    if title == 'ss' : 
+        plt.xlabel(x_label_ch,fontsize=15)
+        plt.ylabel(x_label_jav,fontsize=15)
+        title_hist = 'S82 SDSS Chelsea vs CRTS JAVELIN, '+str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
+        fname = dir_out + 'CRTS_SDSS_matched_sigma_sigma.png'
+    if title == 'tt' :
+        plt.xlabel(y_label_ch, fontsize=15)
+        plt.ylabel(y_label_jav,fontsize=15)
+        title_hist = 'S82 SDSS Chelsea vs CRTS JAVELIN, '+str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
+        fname = dir_out + 'CRTS_SDSS_matched_tau_tau.png'  
         
-    
     plt.title(title_hist)
     # Add the colorbar  
     axC = fig1.add_subplot(gs[:,95:])
@@ -155,3 +164,13 @@ histogram(x_arr, y_arr, number, percent, xlim, ylim, 'ch', dir_out)
 # Make log(sigma)  vs log(tau)  histogram for Javelin CRTS  
 x_arr, y_arr, number, percent = load_x_y(sigma_med_jav_crts, tau_med_jav_crts, xlim, ylim)
 histogram(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_out)
+
+# Make log(sigma) vs log(sigma) histogram  
+
+x_arr, y_arr, number, percent = load_x_y(sigma_chelsea_sdss, sigma_med_jav_crts, xlim, xlim)
+histogram(x_arr, y_arr, number, percent, xlim, xlim, 'ss', dir_out)
+
+# Make log(tau) vs log(tau) histogram 
+
+x_arr, y_arr, number, percent = load_x_y(tau_chelsea_sdss, tau_med_jav_crts, ylim, ylim)
+histogram(x_arr, y_arr, number, percent, ylim, ylim, 'tt', dir_out)
