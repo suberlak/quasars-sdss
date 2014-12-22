@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from math import  isinf
-import sys 
+#import sys 
 
 ######################
 #     lOAD DATA      # 
@@ -23,8 +23,10 @@ import sys
 
 dir_in_out = 'stars_CRTS_analysis/'
 
-args = sys.argv
-err = int(args[1])
+#args = sys.argv
+#err = int(args[1])
+
+err=1
 
 if err ==0 : 
     err_txt = 'err_rms'
@@ -35,13 +37,31 @@ chain_results = dir_in_out+ 'javelin_CRTS_stars_'+err_txt+'_chain_results.txt'
 
 data = np.loadtxt(chain_results,dtype='str' )
 
-# fname =  data[:,0]
-#sigma_l
-sigma_m = data[:,2]
-# sigma_h
-#tau_l 
-tau_m = data[:,5]
-# tau_h
+fname = np.empty(0,dtype=str)
+sigma_m = np.empty(0,dtype=float)
+tau_m =  np.empty(0,dtype=float)
+print sigma_m, tau_m
+
+print 'Reading in all the values ... '
+
+for i in range(len(data[:,0])):
+   try:
+       fname = np.append(fname, data[i,0])
+       sigma_m = np.append(sigma_m, float(data[i,2]))
+       tau_m = np.append(tau_m, float(data[i,5]))
+      
+   except ValueError:
+       
+       pass
+
+if len(sigma_m) != len(tau_m) : 
+    m = min(len(tau_m), len(sigma_m))
+    sigma_m = sigma_m[0:m]
+    tau_m = tau_m[0:m]
+
+assert len(sigma_m) == len(tau_m)
+ 
+print '\nOut of ', len(data[:,0]), ' rows we were able to read in ', len(tau_m)
 
 ######  functions below based on qso_CRTS_SDSS_matched_plotting.py
 
@@ -49,14 +69,38 @@ tau_m = data[:,5]
 #      SET LIMITS       #
 #########################
 
-xmin = 0.001   # sigma limits 
-xmax = 5
-ymin = 1   # tau limits 
-ymax = 70000
+xmin = np.log10(0.1)   # sigma limits 
+xmax = np.log10(5.0)
+ymin = np.log10(1.0)   # tau limits 
+ymax = np.log10(10000.0)
 
-xlim = [xmin, xmax]
-ylim = [ymin, ymax]
-
+def set_limits(x_values,y_values, xmin, xmax, ymin, ymax):
+    # x_values and y_values are sigma and tau 
+    # that are not constrained by anything
+    # this function checks whether the constraint 
+    # below is taking away more than 95% of points... 
+    x0,x1, y0, y1 = xmin, xmax, ymin, ymax 
+    x = x_values
+    y = y_values
+    
+    if xmax < np.percentile(x,95):
+        xmax = np.percentile(x,97)
+        print 'We had to change the x_max from', x1, ' to ', xmax
+    if ymax < np.percentile(y,90):
+        ymax = np.percentile(y, 93)
+        print 'We had to change the y_max from', y1, ' to ', ymax
+    if xmin > np.percentile(x, 7):
+        xmin = np.percentile(x,5)
+        print 'We had to change the x_min from', x0, ' to ', xmin
+    if ymin > np.percentile(y, 7):
+        ymin = np.percentile(y,5)
+        print 'We had to change the x_min from', y0, ' to ', ymin
+    
+    x_lim = [xmin, xmax]
+    y_lim = [ymin,ymax]
+    
+    return  x_lim, y_lim 
+    
 ###########################
 # DEFINE NEEDED FUNCTION  #
 ###########################
@@ -88,7 +132,7 @@ def load_x_y(x_arr, y_arr, x_limits, y_limits):
    
     print 'Out of ', len(x),' rows, we have ', non_inf, ' of those that match', \
     'the criteria of ',  x_limits[0],' < x <', x_limits[1],' and ', y_limits[0],\
-    ' < y < ',y_limits[1], 'and only those are used for plotting ...  '
+    ' < y < ',y_limits[1], ' and have no infinities,  and only those are used for plotting ...  '
     
     return x[gi], y[gi], non_inf, percent
 
@@ -97,14 +141,11 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out,err_choi
     # args could include javelin results_file , from which you can 
     # take the info about the prior  
 
-    x = np.log10(x_arr)
-    y = np.log10(y_arr)
-    
+    x,y = x_arr,y_arr
     nbins =50
-    plt.clf()
-    fig1 = plt.figure()
-        
+
     # Define the canvas to work on   and the  grid  
+    plt.clf()
     fig1 = plt.figure(figsize=[10,8])
     gs = GridSpec(100,100,bottom=0.18,left=0.18,right=0.88)    
             
@@ -117,10 +158,10 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out,err_choi
     ax1 = fig1.add_subplot(gs[:,:90])   
     pcObject1 = ax1.pcolormesh(xedges, yedges, Hmasked)
     
-    xmin = np.log10(xlim[0])
-    xmax = np.log10(xlim[1])
-    ymin =  np.log10(ylim[0])
-    ymax =  np.log10(ylim[1])
+    xmin = xlim[0]
+    xmax = xlim[1]
+    ymin =  ylim[0]
+    ymax =  ylim[1]
     
     plt.xlim((xmin, xmax))
     plt.ylim((ymin, ymax))
@@ -159,5 +200,6 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out,err_choi
     print 'File saved is ', fname
 
 # Make log(sigma)  vs log(tau)  histogram for Chelsea 
-x_arr, y_arr, number, percent = load_x_y(sigma_m, tau_m, xlim, ylim)
+xlim, ylim =  set_limits(np.log10(sigma_m), np.log10(tau_m), xmin, xmax, ymin, ymax)
+x_arr, y_arr, number, percent = load_x_y(np.log10(sigma_m), np.log10(tau_m), xlim, ylim)
 histogram(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_in_out,err)
