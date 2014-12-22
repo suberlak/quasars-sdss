@@ -15,6 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from math import  isinf
+import sys 
 
 ######################
 #     lOAD DATA      # 
@@ -22,7 +23,9 @@ from math import  isinf
 
 dir_in = ['stars_CRTS_err_rms_chains/', 'stars_CRTS_err_w_chains/']
 dir_out = 'stars_CRTS_analysis/'
-err = 0 #  (or 1)
+
+args = sys.argv
+err = float(args[1])
 
 if err ==0 : 
     err_txt = 'err_rms'
