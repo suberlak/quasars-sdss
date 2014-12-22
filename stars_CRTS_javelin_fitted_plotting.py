@@ -21,8 +21,7 @@ import sys
 #     lOAD DATA      # 
 ######################
 
-dir_in = ['stars_CRTS_err_rms_chains/', 'stars_CRTS_err_w_chains/']
-dir_out = 'stars_CRTS_analysis/'
+dir_in_out = 'stars_CRTS_analysis/'
 
 args = sys.argv
 err = int(args[1])
@@ -32,7 +31,7 @@ if err ==0 :
 else: 
     err_txt = 'err_w'
     
-chain_results = dir_in[err]+ 'javelin_CRTS_stars_'+err_txt+'_chain_results.txt'  
+chain_results = dir_in_out[err]+ 'javelin_CRTS_stars_'+err_txt+'_chain_results.txt'  
 
 data = np.loadtxt(chain_results,dtype='str' )
 
@@ -161,4 +160,4 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out,err_choi
 
 # Make log(sigma)  vs log(tau)  histogram for Chelsea 
 x_arr, y_arr, number, percent = load_x_y(sigma_m, tau_m, xlim, ylim)
-histogram(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_out,err)
+histogram(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_in_out,err)
