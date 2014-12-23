@@ -11,11 +11,15 @@ and take np.percentile(error), and only add the object name to the list of
 
 """
 import numpy as np
+import sys 
 
 # note  : the one on stars has to be run on drizzle , because I don't locally 
 # store all the CRTS stars!  
 
-ch = 0
+args = sys.argv
+ch = int(args[1])
+
+#ch = 0
 dir_in = ['QSO_CRTS_processed_err_w/', 'stars_CRTS_processed_err_w/']
 dir_out = ['QSO_CRTS_analysis/', 'stars_CRTS_analysis/']
 list_name = 'out.list'  # made automatically by   qso_crts_preprocessing.py, or stars_crts_preprocessing.py
