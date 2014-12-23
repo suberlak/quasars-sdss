@@ -68,10 +68,10 @@ def sel_points(dir_in_out, fname):
     good_LC = np.loadtxt(dir_in_out + 'good_err_LC.txt', dtype='str')
     good_LC_mask = np.zeros_like(fname, dtype='bool')
     for i in range(len(fname)):
-        obj_compared = fname[i]
+        obj_compared = fname[i][4:]
         print '\nComparison in progress...', str((float(i) / float(len(fname)) )*100.0)[:5], '%'
         for name in good_LC :
-            if  obj_compared == name[4:-4] :
+            if  obj_compared == name[4:-8] :
                 good_LC_mask[i] = True
         
     print 'Out of ', len(fname), 'objects, we use ',  good_LC_mask.sum()
