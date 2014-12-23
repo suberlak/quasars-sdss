@@ -20,12 +20,12 @@ from math import  isinf
 #     lOAD DATA      # 
 ######################
 
-dir1 = 's82drw/'
+dir_in = 'QSO_CRTS_analysis/'  
 dir_out = 'QSO_CRTS_analysis/'
-err_choice = 1 #  (or 1)
 
-out_names = ['javelin_CRTS_err_rms_Chelsea_s82drw_r_compare.txt',  'javelin_CRTS_err_w_Chelsea_s82drw_r_compare.txt']
-output = dir1+ out_names[err_choice]
+
+results_file =  'javelin_CRTS_err_w_Chelsea_s82drw_r_compare.txt'
+output = dir_in+ results_file
 
 data = np.loadtxt(output,dtype='str' )
 
@@ -37,8 +37,9 @@ dec_sdss = data[:,4].astype(float)
 tau_med_jav_crts = data[:,5].astype(float) 
 tau_chelsea_sdss = data[:,6].astype(float)  
 sigma_med_jav_crts = data[:,7].astype(float)  
+sigma_hat_jav_crts = sigma_med_jav_crts * np.sqrt(tau_med_jav_crts / (2.0*365))
 sigma_chelsea_sdss = data[:,8].astype(float)   
-
+sigma_hat_chelsea_sdss = sigma_chelsea_sdss * np.sqrt(tau_chelsea_sdss /(2.0*365) )
 xmin = 0.001   # sigma limits 
 xmax = 5
 ymin = 1   # tau limits 
@@ -46,6 +47,22 @@ ymax = 70000
 
 xlim = [xmin, xmax]
 ylim = [ymin, ymax]
+
+
+##########################
+# SELECT POINTS TO USE   #
+##########################
+
+good_LC = np.loadtxt(dir_in + 'good_err_LC.txt', dtype='str')
+good_LC_mask = np.zeros_like(qso_name, dtype='bool')
+for i in range(len(qso_name)):
+    qso_compared = qso_name[i]
+    print '\nComparison in progress...', str((float(i) / float(len(qso_name)) )*100.0)[:5], '%'
+    for name in good_LC :
+        if qso_compared == name[4:-4] :
+            good_LC_mask[i] = True
+        
+print 'Out of ', len(qso_name), 'objects, we use ',  good_LC_mask.sum()
 
 ###########################
 # DEFINE NEEDED FUNCTION  #
@@ -83,10 +100,11 @@ def load_x_y(x_arr, y_arr, x_limits, y_limits):
     return x[gi], y[gi], non_inf, percent
 
 
-def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
+def histogram2D(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
     # args could include javelin results_file , from which you can 
     # take the info about the prior  
-
+    font = 20
+    
     x = np.log10(x_arr)
     y = np.log10(y_arr)
     
@@ -106,7 +124,9 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
     
     ax1 = fig1.add_subplot(gs[:,:90])   
     pcObject1 = ax1.pcolormesh(xedges, yedges, Hmasked)
-    
+    ax1.tick_params(axis='x', labelsize=font)
+    ax1.tick_params(axis='y', labelsize=font)
+
     xmin = np.log10(xlim[0])
     xmax = np.log10(xlim[1])
     ymin =  np.log10(ylim[0])
@@ -116,61 +136,58 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
     plt.ylim((ymin, ymax))
     
     
-    x_label_ch = r'$\log_{10}{ \, \left(  \sigma_{ch} \right)}$'
+    x_label_ch = r'$\log_{10}{ \, \left(  \hat\sigma_{ch} \right)}$'
     y_label_ch = r'$\log_{10}{ \, \left( \tau_{ch} \right)}$'
-    x_label_jav = r'$\log_{10}{ \, \left(  \sigma_{jav} \right)}$'
+    x_label_jav = r'$\log_{10}{ \, \left(  \hat\sigma_{jav} \right)}$'
     y_label_jav = r'$\log_{10}{ \, \left(  \tau_{jav} \right)}$'
      
     
     if title == 'ch' : 
-        plt.ylabel(y_label_ch,fontsize=15)
-        plt.xlabel(x_label_ch,fontsize=15)
+        plt.ylabel(y_label_ch,fontsize=font+5)
+        plt.xlabel(x_label_ch,fontsize=font+5)
         title_hist = 'S82 SDSS Chelsea results, '+ str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
-        fname = dir_out + 'Chelsea_s82_SDSS_matched.png' 
+        fname = dir_out + 'Chelsea_s82_SDSS_matched_sigma_hat_tau.png' 
     if title == 'jav' :
-        plt.ylabel(y_label_jav,fontsize=15)
-        plt.xlabel(x_label_jav,fontsize=15)
-        if err_choice == 0 : 
-            err = 'err_rms'
-        else: 
-            err = 'err_w'
-        
-        title_hist = 'CRTS Javelin results,'+err+', '+ str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
-        fname = dir_out + 'CRTS_Javelin_matched_'+err+'.png'
+        plt.ylabel(y_label_jav,fontsize=font+5)
+        plt.xlabel(x_label_jav,fontsize=font+5)
+   
+        title_hist = 'CRTS Javelin results, '+ str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
+        fname = dir_out + 'CRTS_Javelin_matched_sigma_hat_tau.png'
     if title == 'ss' : 
-        plt.xlabel(x_label_ch,fontsize=15)
-        plt.ylabel(x_label_jav,fontsize=15)
+        plt.xlabel(x_label_ch,fontsize=font+5)
+        plt.ylabel(x_label_jav,fontsize=font+5)
         title_hist = 'S82 SDSS Chelsea vs CRTS JAVELIN, '+str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
-        fname = dir_out + 'CRTS_SDSS_matched_sigma_sigma.png'
+        fname = dir_out + 'CRTS_SDSS_matched_sigma_hat_sigma_hat.png'
     if title == 'tt' :
-        plt.xlabel(y_label_ch, fontsize=15)
-        plt.ylabel(y_label_jav,fontsize=15)
+        plt.xlabel(y_label_ch, fontsize=font+5)
+        plt.ylabel(y_label_jav,fontsize=font+5)
         title_hist = 'S82 SDSS Chelsea vs CRTS JAVELIN, '+str(number) + ', i.e.  ' + str(percent)[:5]+ '% points'
         fname = dir_out + 'CRTS_SDSS_matched_tau_tau.png'  
         
-    plt.title(title_hist)
+    plt.title(title_hist, fontsize = font)
     # Add the colorbar  
     axC = fig1.add_subplot(gs[:,95:])
+    axC.tick_params(axis='y', labelsize=font)
     cbar = fig1.colorbar(pcObject1,ax=ax1, cax=axC, orientation='vertical')
-    cbar.ax.set_ylabel('Counts')
+    cbar.ax.set_ylabel('Counts', fontsize=font)
     
     plt.savefig(fname)
     print 'File saved is ', fname
 
-# Make log(sigma)  vs log(tau)  histogram for Chelsea 
-x_arr, y_arr, number, percent = load_x_y(sigma_chelsea_sdss, tau_chelsea_sdss, xlim, ylim)
-histogram(x_arr, y_arr, number, percent, xlim, ylim, 'ch', dir_out)
-
-# Make log(sigma)  vs log(tau)  histogram for Javelin CRTS  
-x_arr, y_arr, number, percent = load_x_y(sigma_med_jav_crts, tau_med_jav_crts, xlim, ylim)
-histogram(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_out)
-
-# Make log(sigma) vs log(sigma) histogram  
-
-x_arr, y_arr, number, percent = load_x_y(sigma_chelsea_sdss, sigma_med_jav_crts, xlim, xlim)
-histogram(x_arr, y_arr, number, percent, xlim, xlim, 'ss', dir_out)
-
-# Make log(tau) vs log(tau) histogram 
-
-x_arr, y_arr, number, percent = load_x_y(tau_chelsea_sdss, tau_med_jav_crts, ylim, ylim)
-histogram(x_arr, y_arr, number, percent, ylim, ylim, 'tt', dir_out)
+# Make log(sigma_hat)  vs log(tau)  histogram for Chelsea 
+x_arr, y_arr, number, percent = load_x_y(sigma_hat_chelsea_sdss[good_LC_mask], tau_chelsea_sdss[good_LC_mask], xlim, ylim)
+histogram2D(x_arr, y_arr, number, percent, xlim, ylim, 'ch', dir_out)
+#
+## Make log(sigma_hat)  vs log(tau)  histogram for Javelin CRTS  
+x_arr, y_arr, number, percent = load_x_y(sigma_hat_jav_crts, tau_med_jav_crts, xlim, ylim)
+histogram2D(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_out)
+#
+## Make log(sigma_hat) vs log(sigma_hat) histogram  
+#
+x_arr, y_arr, number, percent = load_x_y(sigma_hat_chelsea_sdss[good_LC_mask], sigma_med_jav_crts[good_LC_mask], xlim, xlim)
+histogram2D(x_arr, y_arr, number, percent, xlim, xlim, 'ss', dir_out)
+#
+## Make log(tau) vs log(tau) histogram 
+#
+x_arr, y_arr, number, percent = load_x_y(tau_chelsea_sdss[good_LC_mask], tau_med_jav_crts[good_LC_mask], ylim, ylim)
+histogram2D(x_arr, y_arr, number, percent, ylim, ylim, 'tt', dir_out)

@@ -26,21 +26,15 @@ dir_in_out = 'stars_CRTS_analysis/'
 #args = sys.argv
 #err = int(args[1])
 
-err=1
 
-if err ==0 : 
-    err_txt = 'err_rms'
-else: 
-    err_txt = 'err_w'
-    
-chain_results = dir_in_out+ 'javelin_CRTS_stars_'+err_txt+'_chain_results.txt'  
+chain_results = dir_in_out+ 'javelin_CRTS_stars_err_w_chain_results.txt'  
 
 data = np.loadtxt(chain_results,dtype='str' )
 
 fname = np.empty(0,dtype=str)
 sigma_m = np.empty(0,dtype=float)
 tau_m =  np.empty(0,dtype=float)
-print sigma_m, tau_m
+
 
 print 'Reading in all the values ... '
 
@@ -50,8 +44,7 @@ for i in range(len(data[:,0])):
        sigma_m = np.append(sigma_m, float(data[i,2]))
        tau_m = np.append(tau_m, float(data[i,5]))
       
-   except ValueError:
-       
+   except ValueError:     
        pass
 
 if len(sigma_m) != len(tau_m) : 
@@ -62,6 +55,59 @@ if len(sigma_m) != len(tau_m) :
 assert len(sigma_m) == len(tau_m)
  
 print '\nOut of ', len(data[:,0]), ' rows we were able to read in ', len(tau_m)
+
+# RECALCULATE SIGMA_HAT FROM SIGMA OF JAVELIN
+
+sigma_hat = sigma_m * np.sqrt(tau_m / (2.0 * 365.0))
+
+############################
+# SELECTING POINTS TO USE  #
+############################
+
+def sel_points(dir_in_out, fname):
+    good_LC = np.loadtxt(dir_in_out + 'good_err_LC.txt', dtype='str')
+    good_LC_mask = np.zeros_like(fname, dtype='bool')
+    for i in range(len(fname)):
+        obj_compared = fname[i]
+        print '\nComparison in progress...', str((float(i) / float(len(fname)) )*100.0)[:5], '%'
+        for name in good_LC :
+            if  obj_compared == name[4:-4] :
+                good_LC_mask[i] = True
+        
+    print 'Out of ', len(fname), 'objects, we use ',  good_LC_mask.sum()
+    return good_LC_mask
+    
+good_LC_mask = sel_points(dir_in_out, fname)
+
+###############################
+# QUICK 1D HISTOGRAM OF SIGMA #
+###############################
+
+def histogram1D_sigma(sigma_m, dir_in_out ):
+    font = 20 
+    lsm = np.log10(sigma_m)
+    
+    xmin = np.percentile(lsm,5)
+    xmax = np.percentile(lsm,95)
+    
+    plt.clf()
+    fig1 = plt.figure(figsize=[10,8])
+    gs = GridSpec(100,100,bottom=0.18,left=0.18,right=0.88)
+    ax1 = fig1.add_subplot(gs[:,:90])   
+    
+    ax1.hist(lsm,100,range=[xmin,xmax],facecolor='gray',align='mid',alpha=0.5)
+    
+    plt.title('CRTS Stars, err_w ',fontsize=font)
+    plt.xlabel(r'$\log_{10}{ \, \left(  \sigma_{jav} \right)}$',fontsize=font)
+    plt.ylabel('Number of counts',fontsize=font )
+    
+    ax1.tick_params(axis='x', labelsize=font)
+    ax1.tick_params(axis='y', labelsize=font)
+    fname = dir_in_out+'CRTS_stars_sigma_histogram.png'
+    plt.savefig(fname)
+    print 'We saved ', fname 
+    
+histogram1D_sigma(sigma_m, dir_in_out)
 
 ######  functions below based on qso_CRTS_SDSS_matched_plotting.py
 
@@ -137,10 +183,10 @@ def load_x_y(x_arr, y_arr, x_limits, y_limits):
     return x[gi], y[gi], non_inf, percent
 
 
-def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out,err_choice):
+def histogram2D(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
     # args could include javelin results_file , from which you can 
     # take the info about the prior  
-
+    font=20
     x,y = x_arr,y_arr
     nbins =50
 
@@ -166,40 +212,29 @@ def histogram(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out,err_choi
     plt.xlim((xmin, xmax))
     plt.ylim((ymin, ymax))
     
-    
-    x_label_ch = r'$\log_{10}{ \, \left(  \sigma_{ch} \right)}$'
-    y_label_ch = r'$\log_{10}{ \, \left( \tau_{ch} \right)}$'
-    x_label_jav = r'$\log_{10}{ \, \left(  \sigma_{jav} \right)}$'
+    x_label_jav = r'$\log_{10}{ \, \left(  \hat\sigma_{jav} \right)}$'
     y_label_jav = r'$\log_{10}{ \, \left(  \tau_{jav} \right)}$'
-     
     
-    if title == 'ch' : 
-        plt.ylabel(y_label_ch,fontsize=15)
-        plt.xlabel(x_label_ch,fontsize=15)
-        title_hist = 'S82 SDSS Chelsea results, '+ str(number) + ', i.e.  ' + str(percent)+ '% points'
-        fname = dir_out + 'Chelsea_s82_SDSS_matched.png' 
-    else:
-        plt.ylabel(y_label_jav,fontsize=15)
-        plt.xlabel(x_label_jav,fontsize=15)
-        if err_choice == 0 : 
-            err = 'err_rms'
-        else: 
-            err = 'err_w'
-        
-        title_hist = 'CRTS stars Javelin results,'+err+', '+ str(number)[:5] + ', i.e.  ' + str(percent)[:5]+ '% points'
-        fname = dir_out + 'CRTS_stars_Javelin_'+err+'.png'
-        
+    plt.ylabel(y_label_jav,fontsize=font)
+    plt.xlabel(x_label_jav,fontsize=font)
+    title_hist = 'CRTS stars Javelin results, '+ str(number)[:5] + ', i.e.  ' + str(percent)[:5]+ '% points'
     
-    plt.title(title_hist)
+    plt.title(title_hist, fontsize=font)
     # Add the colorbar  
     axC = fig1.add_subplot(gs[:,95:])
     cbar = fig1.colorbar(pcObject1,ax=ax1, cax=axC, orientation='vertical')
-    cbar.ax.set_ylabel('Counts')
+    cbar.ax.set_ylabel('Counts', fontsize=font)
+    axC.tick_params(axis='y', labelsize=font)
     
+    # save file
+    fname = dir_out + 'CRTS_stars_Javelin_sigma_hat_tau.png'
     plt.savefig(fname)
     print 'File saved is ', fname
 
-# Make log(sigma)  vs log(tau)  histogram for Chelsea 
-xlim, ylim =  set_limits(np.log10(sigma_m), np.log10(tau_m), xmin, xmax, ymin, ymax)
-x_arr, y_arr, number, percent = load_x_y(np.log10(sigma_m), np.log10(tau_m), xlim, ylim)
-histogram(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_in_out,err)
+
+sigma_hat = sigma_hat[good_LC_mask]
+tau_m = tau_m[good_LC_mask]
+
+xlim, ylim =  set_limits(np.log10(sigma_hat), np.log10(tau_m), xmin, xmax, ymin, ymax)
+x_arr, y_arr, number, percent = load_x_y(np.log10(sigma_hat), np.log10(tau_m), xlim, ylim)
+histogram2D(x_arr, y_arr, number, percent, xlim, ylim, dir_in_out)
