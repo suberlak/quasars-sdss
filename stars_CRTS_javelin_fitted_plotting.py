@@ -2,7 +2,7 @@
 """
 Created on Mon Dec 22 20:32:05 2014
 
-@author: astronomy
+@author: Chris 
 
 Plot 2D histogram for  the CRTS stars fitted with  Javelin , output of 
 condor_wrapper_CRTS_stars.py and 
@@ -51,6 +51,7 @@ if len(sigma_m) != len(tau_m) :
     m = min(len(tau_m), len(sigma_m))
     sigma_m = sigma_m[0:m]
     tau_m = tau_m[0:m]
+    fname = fname[0:m]
 
 assert len(sigma_m) == len(tau_m)
  
