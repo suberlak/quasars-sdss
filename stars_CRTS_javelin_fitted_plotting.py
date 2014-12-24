@@ -67,13 +67,16 @@ sigma_hat = sigma_m * np.sqrt(tau_m / (2.0 * 365.0))
 
 def sel_points(dir_in_out, fname):
     good_LC = np.loadtxt(dir_in_out + 'good_err_LC.txt', dtype='str')
+    good_LC_cut = np.empty(0, dtype=str)
+
+    for i in range(len(good_LC)):
+        good_LC_cut = np.append(good_LC_cut, good_LC[i][4:-8])
+        
     good_LC_mask = np.zeros_like(fname, dtype='bool')
     for i in range(len(fname)):
-        obj_compared = fname[i][4:]
         print '\nComparison in progress...', str((float(i) / float(len(fname)) )*100.0)[:5], '%'
-        for name in good_LC :
-            if  obj_compared == name[4:-8] :
-                good_LC_mask[i] = True
+        good_LC_mask[i] =  fname[i][4:] in  good_LC_cut 
+        
         
     print 'Out of ', len(fname), 'objects, we use ',  good_LC_mask.sum()
     return good_LC_mask
@@ -130,8 +133,8 @@ def set_limits(x_values,y_values, xmin, xmax, ymin, ymax):
     x = x_values
     y = y_values
     
-    if xmax < np.percentile(x,95):
-        xmax = np.percentile(x,97)
+    if xmax < np.percentile(x,94):
+        xmax = np.percentile(x,93)
         print 'We had to change the x_max from', x1, ' to ', xmax
     if ymax < np.percentile(y,90):
         ymax = np.percentile(y, 93)
@@ -184,7 +187,7 @@ def load_x_y(x_arr, y_arr, x_limits, y_limits):
     return x[gi], y[gi], non_inf, percent
 
 
-def histogram2D(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
+def histogram2D(x_arr, y_arr, number, percent, xlim, ylim, dir_out):
     # args could include javelin results_file , from which you can 
     # take the info about the prior  
     font=20

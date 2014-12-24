@@ -54,13 +54,16 @@ ylim = [ymin, ymax]
 ##########################
 
 good_LC = np.loadtxt(dir_in + 'good_err_LC.txt', dtype='str')
+good_LC_cut = np.empty(0, dtype=str)
+
+for i in range(len(good_LC)):
+    good_LC_cut = np.append(good_LC_cut, good_LC[i][4:-4])
+
 good_LC_mask = np.zeros_like(qso_name, dtype='bool')
 for i in range(len(qso_name)):
-    qso_compared = qso_name[i]
     print '\nComparison in progress...', str((float(i) / float(len(qso_name)) )*100.0)[:5], '%'
-    for name in good_LC :
-        if qso_compared == name[4:-4] :
-            good_LC_mask[i] = True
+    good_LC_mask[i] =  qso_name[i] in good_LC_cut     
+  
         
 print 'Out of ', len(qso_name), 'objects, we use ',  good_LC_mask.sum()
 
