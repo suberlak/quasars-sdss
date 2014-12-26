@@ -36,8 +36,8 @@ lc_names = np.loadtxt(list_file, dtype='str')
 gi = np.ones_like(lc_names, dtype=bool) # good indices 
 
 for i in range(len(lc_names)):
-    if os.stat(dir_in+lc_names[i])[6]==0:  gi[i] = False  # bad if empty
-    address=dir_in+lc_names[i]
+    if os.stat(dir_in[ch]+lc_names[i])[6]==0:  gi[i] = False  # bad if empty
+    address=dir_in[ch]+lc_names[i]
     data=np.loadtxt(address)
     if data.size < 30.0 :  gi[i] = False  # bad if shorter than 10 lines 
 
