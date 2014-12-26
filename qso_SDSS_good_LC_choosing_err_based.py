@@ -12,6 +12,7 @@ and take np.percentile(error), and only add the object name to the list of
 """
 import numpy as np
 import sys 
+import os 
 
 # note  : the one on stars has to be run on drizzle , because I don't locally 
 # store all the CRTS stars!  
@@ -27,6 +28,34 @@ list_name = 'r_band.ls'  # made automatically by   qso_crts_preprocessing.py, or
 
 list_file = dir_in[ch]+list_name
 lc_names = np.loadtxt(list_file, dtype='str')
+
+#
+#  IGNORE EMPTY  LIGHTCURVES AND THOSE TOO SHORT (shorter than 10 lines)
+#
+
+gi = np.ones_like(lc_names, dtype=bool) # good indices 
+
+for i in range(len(lc_names)):
+    if os.stat(dir_in+lc_names[i])[6]==0:  gi[i] = False  # bad if empty
+    address=dir_in+lc_names[i]
+    data=np.loadtxt(address)
+    if data.size < 30.0 :  gi[i] = False  # bad if shorter than 10 lines 
+
+num_too_short=np.sum(np.logical_not(gi))
+num_long=np.sum(gi)
+
+print 'Out of', len(lc_names), 'files, we have', num_long, 'files that were longer than 10 lines', \
+'and therefore, ', num_too_short, 'almost empty files'
+
+print 'Files that were too short :', lc_names[np.logical_not(gi)]
+
+
+# substitute the name , choosing only good ones... 
+lc_names = lc_names[gi]
+
+print '\nPerforming calculations on files with more than one measurement...'
+
+
 good_lc = np.empty(0,dtype=str)
 for name in lc_names :
     data = np.loadtxt(dir_in[ch]+name, dtype='float')
