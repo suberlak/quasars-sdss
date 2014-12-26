@@ -20,7 +20,7 @@ import sys
 #ch = int(args[1])
 
 ch = 0
-dir_in = ['QSO_SDSS_JAV']
+dir_in = ['QSO_SDSS_JAV/']
 dir_out = ['QSO_SDSS_analysis/']
 list_name = 'r_band.ls'  # made automatically by   qso_crts_preprocessing.py, or stars_crts_preprocessing.py
 
