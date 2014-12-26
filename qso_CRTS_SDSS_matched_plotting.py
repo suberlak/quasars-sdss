@@ -178,19 +178,28 @@ def histogram2D(x_arr, y_arr, number, percent, xlim, ylim, title, dir_out):
     print 'File saved is ', fname
 
 # Make log(sigma_hat)  vs log(tau)  histogram for Chelsea 
-x_arr, y_arr, number, percent = load_x_y(sigma_hat_chelsea_sdss[good_LC_mask], tau_chelsea_sdss[good_LC_mask], xlim, ylim)
-histogram2D(x_arr, y_arr, number, percent, xlim, ylim, 'ch', dir_out)
-#
-## Make log(sigma_hat)  vs log(tau)  histogram for Javelin CRTS  
-x_arr, y_arr, number, percent = load_x_y(sigma_hat_jav_crts, tau_med_jav_crts, xlim, ylim)
-histogram2D(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_out)
-#
-## Make log(sigma_hat) vs log(sigma_hat) histogram  
-#
+#x_arr, y_arr, number, percent = load_x_y(sigma_hat_chelsea_sdss[good_LC_mask], tau_chelsea_sdss[good_LC_mask], xlim, ylim)
+#histogram2D(x_arr, y_arr, number, percent, xlim, ylim, 'ch', dir_out)
+##
+### Make log(sigma_hat)  vs log(tau)  histogram for Javelin CRTS  
+#x_arr, y_arr, number, percent = load_x_y(sigma_hat_jav_crts, tau_med_jav_crts, xlim, ylim)
+#histogram2D(x_arr, y_arr, number, percent, xlim, ylim, 'jav', dir_out)
+##
+### Make log(sigma_hat) vs log(sigma_hat) histogram  
+##
 x_arr, y_arr, number, percent = load_x_y(sigma_hat_chelsea_sdss[good_LC_mask], sigma_med_jav_crts[good_LC_mask], xlim, xlim)
-histogram2D(x_arr, y_arr, number, percent, xlim, xlim, 'ss', dir_out)
-#
-## Make log(tau) vs log(tau) histogram 
-#
-x_arr, y_arr, number, percent = load_x_y(tau_chelsea_sdss[good_LC_mask], tau_med_jav_crts[good_LC_mask], ylim, ylim)
-histogram2D(x_arr, y_arr, number, percent, ylim, ylim, 'tt', dir_out)
+#histogram2D(x_arr, y_arr, number, percent, xlim, xlim, 'ss', dir_out)
+##
+### Make log(tau) vs log(tau) histogram 
+##
+#x_arr, y_arr, number, percent = load_x_y(tau_chelsea_sdss[good_LC_mask], tau_med_jav_crts[good_LC_mask], ylim, ylim)
+#histogram2D(x_arr, y_arr, number, percent, ylim, ylim, 'tt', dir_out)
+
+def median_and_rms(array):
+    median = np.median(array)
+    rms = np.percentile(array, 75) - np.percentile(array,25)
+    print median, rms
+    
+print '\nMedian and RMs from IQR (75-25%) range for Chelsea sigma hat is ', median_and_rms(x_arr)
+
+print '\nMedian and RMs from IQR (75-25%) range for Javelin CRTS sigma hat is ', median_and_rms(y_arr)

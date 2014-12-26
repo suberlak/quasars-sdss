@@ -4,7 +4,10 @@ Created on Tue Dec 23 22:12:01 2014
 
 @author: Chris 
 
-Plotting stats for CRTS stars,  to see if there is anything weird in those 
+Matching the Javelin results and the good_err_LC.txt , which selected 
+those quasars that have good errors. 
+
+Plotting stats for CRTS,  to see if there is anything weird in those 
 that have sigma < 0 ...
 
 I leave it open to also plot these same stats for QSO, 

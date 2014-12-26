@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from math import  isinf
 
-ch = 0
+ch = 1
+d = 0
+
 dir_in_out = ['QSO_CRTS_analysis/', 'stars_CRTS_analysis/']
 datafile = dir_in_out[ch]+'javelin_sigma_tau_plus_stats_matched_good_err.txt'
 
@@ -33,11 +35,11 @@ ls = np.log10(sigma_m)
 
 def histogram1D(x,title,xlabel, name):
     plt.clf()
-    plt.hist(x, range())
+    
     font = 20 
     
     xmin = np.percentile(x,5)
-    xmax = np.percentile(x,95)
+    xmax = np.percentile(x,94)
     
     fig1 = plt.figure(figsize=[10,8])
     gs = GridSpec(100,100,bottom=0.18,left=0.18,right=0.88)
@@ -51,16 +53,23 @@ def histogram1D(x,title,xlabel, name):
     
     ax1.tick_params(axis='x', labelsize=font)
     ax1.tick_params(axis='y', labelsize=font)
-    fname = dir_in_out+'CRTS_stars_hist_'+name+'.png'
+    fname = dir_in_out[ch]+'CRTS_stars_hist_'+name+'.png'
     plt.savefig(fname)
     print 'We saved ', fname 
     
-histogram1D(err_mean[ls<0],title='Mean error, $log(sigma)<0$',xlabel='Mean error [mag]',name='err_sm' )    
-histogram1D(err_mean[ls>0],title='Mean error, $log(sigma)>0$',xlabel='Mean error [mag]',name='err_lg' ) 
+histogram1D(ls,title='CRTS Stars, $\log(\sigma)$', xlabel ='$\log(\sigma)$', name='log_sigma' )    
+histogram1D(np.log10(sigma_hat), title='CRTS stars', xlabel= '$\log(\hat\sigma)$', name='log_sigma_hat')
+histogram1D(err_mean[ls<d],title='Mean error, $\log(\sigma)<0$',xlabel='Mean error [mag]',name='err_sm' )    
+histogram1D(err_mean[ls>d],title='Mean error, $\log(\sigma)>0$',xlabel='Mean error [mag]',name='err_lg' ) 
 
-histogram1D(N_lines[ls<0],title='Light curve length', xlabel = 'Length', name='N_lines_sm')
-histogram1D(N_lines[ls>0],title='Light curve length', xlabel = 'Length', name='N_lines_lg')
+histogram1D(N_lines[ls<d],title='Light curve length, $\log(\sigma)<0$', xlabel = 'Length', name='N_lines_sm')
+histogram1D(N_lines[ls>d],title='Light curve length,$\log(\sigma)>0$', xlabel = 'Length', name='N_lines_lg')
 
-histogram1D(mag_rms)
+histogram1D(mag_rms[ls<d], title='RMS magnitude scatter, $\log(\sigma)<0$', xlabel='rms mag scatter [mag]', name = 'mag_rms_sm')
+histogram1D(mag_rms[ls>d], title='RMS magnitude scatter, $\log(\sigma)>0$', xlabel='rms mag scatter [mag]', name = 'mag_rms_lg')
 
-histogram1D(mag_mean)
+histogram1D(mag_mean[ls<d], title='Mean magnitude, $\log(\sigma)<0$', xlabel='Mean magnitude [mag]', name = 'mean_mag_sm')
+histogram1D(mag_mean[ls>d], title='Mean magnitude, $\log(\sigma)>0$', xlabel='Mean magnitude [mag]', name = 'mean_mag_lg')
+
+histogram1D(mjd_span[ls<d], title='MJD span, , $\log(\sigma)<0$', xlabel = 'MJD span [days]', name='mjd_span_sm')
+histogram1D(mjd_span[ls>d], title='MJD span, , $\log(\sigma)>0$', xlabel = 'MJD span [days]', name='mjd_span_lg')
