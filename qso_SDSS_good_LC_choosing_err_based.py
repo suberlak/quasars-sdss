@@ -5,17 +5,20 @@ Created on Tue Dec 23 19:59:20 2014
 @author: astronomy
 
 
-Take CRTS lightcurves  (both stars and quasars) , and calculate the median error,
-and take np.percentile(error), and only add the object name to the list of 
-'good' ones,  if the median(error) < 0.1 , and 90% of points are < 0.2 in error.
+Take SDSS lightcurves , ignore empty files and those less than 10 lines long, 
+and calculate the median error (with np.percentile(error,50) ), 
+and only add the object name to the list of  'good' ones,  
+if the median(error) < 0.1 , and 90% of points are < 0.2 in error.
+
+Thus created list is stored in QSO_SDSS_analysis  , and helps to decide 
+which quasars should be plotted, when comparing the SDSS Chelsea results , 
+and results of Javelin SDSS runs. 
 
 """
 import numpy as np
 import sys 
 import os 
 
-# note  : the one on stars has to be run on drizzle , because I don't locally 
-# store all the CRTS stars!  
 
 #args = sys.argv
 #ch = int(args[1])
@@ -23,14 +26,14 @@ import os
 ch = 0
 dir_in = ['QSO_SDSS_JAV/']
 dir_out = ['QSO_SDSS_analysis/']
-list_name = 'r_band.ls'  # made automatically by   qso_crts_preprocessing.py, or stars_crts_preprocessing.py
+list_name = 'r_band.ls'  
 
 
 list_file = dir_in[ch]+list_name
 lc_names = np.loadtxt(list_file, dtype='str')
 
 #
-#  IGNORE EMPTY  LIGHTCURVES AND THOSE TOO SHORT (shorter than 10 lines)
+#  IGNORE EMPTY  LIGHTCURVES AND THOSE SHORTER THAN 10 LINES 
 #
 
 gi = np.ones_like(lc_names, dtype=bool) # good indices 
@@ -55,6 +58,9 @@ lc_names = lc_names[gi]
 
 print '\nPerforming calculations on files with more than one measurement...'
 
+#
+# CHECK WHICH FILES FULFILL THE ERROR CRITERIA 
+# 
 
 good_lc = np.empty(0,dtype=str)
 for name in lc_names :
