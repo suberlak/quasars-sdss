@@ -46,9 +46,23 @@ ID      = raw_data[:,4].astype(float)
 # color (not in CRTS...)
 
 
+
+
+
+
+
+
+
 ####
 #### ALLOW SOME SELECTION  CRITERIA HERE.... 
 ####
+
+
+
+
+
+
+
 
 ###################
 #### PLOTTING  ####
@@ -86,4 +100,5 @@ plt.plot(bin_tau, bin_means + bin_rms_robust, color='yellow',lw = 2)
 plt.xlabel('Time difference [days]')
 plt.ylabel(r'$\Delta$ m')
 plt.legend()
+plt.savefig('SF_tau-vs-del_mag.png')
 plt.show()
