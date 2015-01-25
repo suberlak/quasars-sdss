@@ -48,17 +48,9 @@ ID      = raw_data[:,4].astype(float)
 
 
 
-
-
-
-
-
 ####
 #### ALLOW SOME SELECTION  CRITERIA HERE.... 
 ####
-
-
-
 
 
 
@@ -68,9 +60,33 @@ ID      = raw_data[:,4].astype(float)
 #### PLOTTING  ####
 ###################
 
+
+
 def plotting(tau,delflx) :   
     plt.clf()
-    plt.scatter(tau, delflx)
+    
+    ### A simple scatter plotr  
+    #plt.scatter(tau, delflx)     
+    
+    ### plotting in a MY HISTOGRAM  way - too cluttered...     
+    H, xedges,yedges = np.histogram2d(tau,delflx,bins=50)  
+    H = np.rot90(H)
+    H = np.flipud(H)
+    Hmasked = np.ma.masked_where(H==0,H)
+    
+    plt.pcolormesh(xedges, yedges, Hmasked)   # as  a color map 
+   
+   ## from KDE  : EXTREMELY SLOW !  
+     # from scipy.stats import gaussian_kde
+#    x = tau 
+#    y = delflx
+#    xy = np.vstack([x,y])  
+#    z = gaussian_kde(xy)(xy)
+#    idx = z.argsort()
+#    x, y, z = x[idx], y[idx], z[idx]
+#    fig, ax = plt.subplots()
+#    ax.scatter(x, y, c=z, s=5, edgecolor='')
+    
     plt.xlabel('Time difference [days]')
     plt.ylabel(r'$\Delta$ m')
     
@@ -92,13 +108,19 @@ bin_tau = binned_statistic(tau, tau, statistic='mean', bins=nbins)[0]
 # Quickly plot the three lines : and Zeljko meant to plot those, and +/-
 plotting(tau,delflx)
 
-plt.plot(bin_tau, bin_means, color='white', label='Mean', lw = 2)
+plt.plot(bin_tau, bin_means, color='Gold', label='Mean', lw = 2)
 plt.plot(bin_tau, bin_means + bin_rms_std, color='r',lw = 2, label='Mean+/-RMS_std')
 plt.plot(bin_tau, bin_means - bin_rms_std, color='r',lw = 2)
-plt.plot(bin_tau, bin_means - bin_rms_robust, color='yellow',lw = 2 ,label='Mean+/-RMS_robust')
-plt.plot(bin_tau, bin_means + bin_rms_robust, color='yellow',lw = 2)
+plt.plot(bin_tau, bin_means - bin_rms_robust, color='Magenta',lw = 2 ,label='Mean+/-RMS_robust')
+plt.plot(bin_tau, bin_means + bin_rms_robust, color='Magenta',lw = 2)
 plt.xlabel('Time difference [days]')
 plt.ylabel(r'$\Delta$ m')
 plt.legend()
 plt.savefig('SF_tau-vs-del_mag.png')
 plt.show()
+
+
+# Plot  the rms vs tau - i.e. the Structure Function 
+plt.clf()
+plt.plot(np.log10(bin_tau), bin_rms_std)
+# problem - it doesn't look how I expected it to look... 

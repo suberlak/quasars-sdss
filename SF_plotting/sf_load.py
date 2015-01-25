@@ -19,12 +19,24 @@ plot the SF  :
 
 import os
 import numpy as np 
-import matplotlib.pyplot as plt 
-from scipy.stats import binned_statistic
+
 
 # Read in the LC files 
-inDir =  './stars_CRTS_proc_err_w_good_TRY/' 
+
+qso_or_star = 'qso'
+
+if qso_or_star == 'star':
+    inDir =  './stars_CRTS_proc_err_w_good_TRY/' 
+    outfile = 'SF_CRTS_stars_master.txt'
+    start=4
+    end=-8
+if qso_or_star == 'qso' :
+    inDir = '../QSO_CRTS_proc_err_w_good/'
+    outfile = 'SF_CRTS_quasars_master.txt'
+    start=4
+    end=-4
 outDir = './sf_TRY/' 
+
 if not os.path.exists(outDir): os.system('mkdir %s' % outDir) 
 
 
@@ -41,7 +53,7 @@ delflxerr_hold = np.empty(0,dtype=float)
 
 for i in range(len(inFiles)):
     file = str(inFiles[i])
-     
+    print '\nFile ',i, 'out of',  len(inFiles)
     # load the mjd, flux, and flux_error  from the read file 
     mjd,flx4,err = np.loadtxt(inDir+'%s' % (file),usecols=(0,1,2),unpack=True)
     
@@ -78,7 +90,7 @@ for i in range(len(inFiles)):
     
     # Make arrays that repeat the LC stats 
      
-    ID_arr = np.ones_like(tau,dtype=int) * int(file[4:-8])
+    ID_arr = np.array(len(tau)*[file[start:end]])
     avg_mag_arr = np.ones_like(tau, dtype=float) * np.mean(flx4)
     avg_err_arr = np.ones_like(tau,dtype=float) * np.mean(err)    
      # I assume that the filename structure is 
@@ -102,6 +114,6 @@ for i in range(len(inFiles)):
     delflxerr_hold = np.append(delflxerr_hold,delflxerr)
     
 DATA = np.column_stack((delflx_hold,tau_hold, avg_mag_hold, avg_err_hold, ID_hold))    
-np.savetxt(outDir +     'SF_CRTS_stars_master.txt', DATA, delimiter =' ', fmt="%s")
+np.savetxt(outDir +     outfile, DATA, delimiter =' ', fmt="%s")
 
-print 'Saved ', outDir ,     'SF_CRTS_stars_master.txt'
+print 'Saved ', outDir ,     outfile
