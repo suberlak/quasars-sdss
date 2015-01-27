@@ -6,6 +6,17 @@ Created on Mon Jan 19 16:53:08 2015
 
 Program to plot Structure Function given the flux difference vs tau table. 
 
+Calling the program:
+
+python sf_plotting.py   DIRECTORY   FILENAME  CHOICE   SAMPLE 
+
+where:  
+
+DIRECTORY = eg.  sf_TRY/  ,  ./sf_TRY/    etc. 
+FILENAME =  SF_CRTS_quasars_sample2.txt etc. 
+CHOICE = qso    ( or stars  )
+SAMPLE =  s0 , s1 , s2...   naming scheme for plots  saved to  DIRECTORY 
+
 It does the following : 
 
 * Read in the data from master file (allowing to select whether star or 
@@ -58,6 +69,7 @@ if choice == 'stars' :
 if choice == 'qso' :
     inFile = 'SF_CRTS_quasars_sample.txt'
     
+print 'Loading data...'
 raw_data = np.loadtxt(inDir+inFile, dtype='str')
 
 delflx  = raw_data[:,0].astype(float)
@@ -69,6 +81,8 @@ if choice =='stars' :
     ID      = raw_data[:,4].astype(float)  # as floats  
 if choice == 'qso' :
     ID      = raw_data[:,4]  # as strings  
+    
+print 'Data loaded.'     
 # color (not in CRTS...)
 
 
@@ -124,6 +138,7 @@ rms_std = lambda x : np.std(x)
 nbins = 100 # ensure uniform sampling in all statistics (same bins...)
 
 # Calculate bin statistics 
+print 'Calculating bin statistics'
 bin_means = binned_statistic(tau, delflx, statistic = 'mean', bins=nbins)[0]
 bin_rms_std = binned_statistic(tau, delflx, statistic = rms_std, bins=nbins)[0]
 bin_rms_robust = binned_statistic(tau, delflx, statistic = rms_robust, bins=nbins)[0]
@@ -136,6 +151,7 @@ bin_tau = binned_statistic(tau, tau, statistic='mean', bins=nbins)[0]
 # Quickly plot the three lines : and Zeljko meant to plot those, and +/-
 # ######## # 
 
+print 'Plotting three lines...'
 plotting(tau,delflx)
 plt.plot(bin_tau, bin_means, color='Gold', label='Mean', lw = 2)
 plt.plot(bin_tau, bin_means + bin_rms_std, color='r',lw = 2, label='Mean+/-RMS_std')
@@ -158,6 +174,7 @@ plt.show()
 N_objects = len(np.unique(ID))
 
 plt.clf()
+print 'Plotting rms_std vs tau ... '
 plt.scatter(np.log10(bin_tau), bin_rms_std)
 plt.xlabel('$log_{10}$ [days]')
 plt.ylabel('SF = standard deviation')
@@ -172,6 +189,7 @@ plt.show()
 # ############
 
 plt.clf()
+print 'Plotting rms_robust  vs tau ... '
 plt.scatter(np.log10(bin_tau), bin_rms_robust)
 plt.xlabel('$log_{10}$ [days]')
 plt.ylabel('SF = (75% - 25%) ')
