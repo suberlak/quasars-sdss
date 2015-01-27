@@ -28,13 +28,21 @@ from scipy.stats import binned_statistic
 # Read in the LC files 
 inDir =  './sf_TRY/'
 outDir = './sf_TRY/'
-choice = 'stars' 
+
 if not os.path.exists(outDir): os.system('mkdir %s' % outDir) 
+
+'''
+Must make a choice between stars and quasars , and determine sample name 
+(deafult  : s0)
+'''
+
+choice = 'qso' 
+sample = 's0'
 
 if choice == 'stars' : 
     inFile = 'SF_CRTS_stars_master.txt'
-else:
-    inFile = 'SF_CRTS_quasars_master.txt'
+if choice == 'qso' :
+    inFile = 'SF_CRTS_quasars_sample.txt'
     
 raw_data = np.loadtxt(inDir+inFile, dtype='str')
 
@@ -42,7 +50,11 @@ delflx  = raw_data[:,0].astype(float)
 tau     = raw_data[:,1].astype(float)
 avg_mag = raw_data[:,2].astype(float)
 avg_err = raw_data[:,3].astype(float)
-ID      = raw_data[:,4].astype(float)
+
+if choice =='stars' : 
+    ID      = raw_data[:,4].astype(float)  # as floats  
+if choice == 'qso' :
+    ID      = raw_data[:,4]  # as strings  
 # color (not in CRTS...)
 
 
@@ -105,22 +117,51 @@ bin_rms_robust = binned_statistic(tau, delflx, statistic = rms_robust, bins=nbin
 # Pull out some tau to plot means... 
 bin_tau = binned_statistic(tau, tau, statistic='mean', bins=nbins)[0]
 
-# Quickly plot the three lines : and Zeljko meant to plot those, and +/-
-plotting(tau,delflx)
 
+# ######## #
+# Quickly plot the three lines : and Zeljko meant to plot those, and +/-
+# ######## # 
+
+plotting(tau,delflx)
 plt.plot(bin_tau, bin_means, color='Gold', label='Mean', lw = 2)
 plt.plot(bin_tau, bin_means + bin_rms_std, color='r',lw = 2, label='Mean+/-RMS_std')
 plt.plot(bin_tau, bin_means - bin_rms_std, color='r',lw = 2)
 plt.plot(bin_tau, bin_means - bin_rms_robust, color='Magenta',lw = 2 ,label='Mean+/-RMS_robust')
 plt.plot(bin_tau, bin_means + bin_rms_robust, color='Magenta',lw = 2)
+plt.title(r'Flux difference vs tau, nbins ='+str(nbins)+', '+choice) 
 plt.xlabel('Time difference [days]')
 plt.ylabel(r'$\Delta$ m')
 plt.legend()
-plt.savefig('SF_tau-vs-del_mag.png')
+title1 = 'SF_'+choice+'_tau-vs-del_mag_'+sample+'.png'
+plt.savefig(title1)
 plt.show()
 
+# ############
+# Plot  the rms_std vs tau - i.e. the Structure Function 
+# ############
 
-# Plot  the rms vs tau - i.e. the Structure Function 
+# nbins above, check also how many stars are in the sample :
+N_objects = len(np.unique(ID))
+
 plt.clf()
-plt.plot(np.log10(bin_tau), bin_rms_std)
+plt.scatter(np.log10(bin_tau), bin_rms_std)
+plt.xlabel('$log_{10}$ [days]')
+plt.ylabel('SF = standard deviation')
+plt.title('SF '+choice+', '+str(N_objects)+' objects')
+title2 = 'SF_'+choice+'_tau-vs-rms_std_'+sample+'.png'
+plt.savefig(title2)
+plt.show()
 # problem - it doesn't look how I expected it to look... 
+
+# ############
+# Plot the rms_robust vs tau  
+# ############
+
+plt.clf()
+plt.scatter(np.log10(bin_tau), bin_rms_robust)
+plt.xlabel('$log_{10}$ [days]')
+plt.ylabel('SF = (75% - 25%) ')
+plt.title('SF '+choice+', '+str(N_objects)+' objects')
+title2 = 'SF_'+choice+'_tau-vs-rms_robust_'+sample+'.png'
+plt.savefig(title2)
+plt.show()
