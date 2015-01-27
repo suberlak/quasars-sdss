@@ -24,10 +24,26 @@ import os
 import numpy as np 
 import matplotlib.pyplot as plt 
 from scipy.stats import binned_statistic
+import sys
+
 
 # Read in the LC files 
-inDir =  './sf_TRY/'
-outDir = './sf_TRY/'
+
+#  If the user calls the program   sf_plotting.py   DIR_IN  FNAME  QSO_OR_STAR?  SAMPLE?
+args = sys.argv
+if args[1] != '' : 
+    inDir = args[1]
+    outDir = args[1]
+    inFile = args[2]
+    choice = args[3]
+    sample = args[4]
+    
+else:  # otherwise resort to default naming scheme... 
+    inDir =  './sf_TRY/'
+    outDir = './sf_TRY/'
+    choice = 'qso' 
+    sample = 's0'
+
 
 if not os.path.exists(outDir): os.system('mkdir %s' % outDir) 
 
@@ -36,8 +52,6 @@ Must make a choice between stars and quasars , and determine sample name
 (deafult  : s0)
 '''
 
-choice = 'qso' 
-sample = 's0'
 
 if choice == 'stars' : 
     inFile = 'SF_CRTS_stars_master.txt'
