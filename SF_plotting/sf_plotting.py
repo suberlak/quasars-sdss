@@ -42,18 +42,22 @@ import sys
 
 #  If the user calls the program   sf_plotting.py   DIR_IN  FNAME  QSO_OR_STAR?  SAMPLE?
 args = sys.argv
-if args[1] != '' : 
+if len(args) > 1 : 
     inDir = args[1]
     outDir = args[1]
     inFile = args[2]
     choice = args[3]
     sample = args[4]
     
-else:  # otherwise resort to default naming scheme... 
+if len(args) == 1 :   # otherwise resort to default naming scheme... 
     inDir =  './sf_TRY/'
     outDir = './sf_TRY/'
-    choice = 'qso' 
+    choice = 'stars' 
     sample = 's0'
+    if choice == 'stars' : 
+        inFile = 'SF_CRTS_stars_master.txt'
+    if choice == 'qso' :
+        inFile = 'SF_CRTS_quasars_sample.txt'
 
 
 if not os.path.exists(outDir): os.system('mkdir %s' % outDir) 
@@ -64,10 +68,7 @@ Must make a choice between stars and quasars , and determine sample name
 '''
 
 
-if choice == 'stars' : 
-    inFile = 'SF_CRTS_stars_master.txt'
-if choice == 'qso' :
-    inFile = 'SF_CRTS_quasars_sample.txt'
+
     
 print 'Loading data...'
 raw_data = np.loadtxt(inDir+inFile, dtype='str')
@@ -106,15 +107,15 @@ def plotting(tau,delflx) :
     plt.clf()
     
     ### A simple scatter plotr  
-    #plt.scatter(tau, delflx)     
+    plt.scatter(tau, delflx,s=4)     
     
     ### plotting in a MY HISTOGRAM  way - too cluttered...     
-    H, xedges,yedges = np.histogram2d(tau,delflx,bins=50)  
-    H = np.rot90(H)
-    H = np.flipud(H)
-    Hmasked = np.ma.masked_where(H==0,H)
-    
-    plt.pcolormesh(xedges, yedges, Hmasked)   # as  a color map 
+#    H, xedges,yedges = np.histogram2d(tau,delflx,bins=50)  
+#    H = np.rot90(H)
+#    H = np.flipud(H)
+#    Hmasked = np.ma.masked_where(H==0,H)
+#    
+#    plt.pcolormesh(xedges, yedges, Hmasked)   # as  a color map 
    
    ## from KDE  : EXTREMELY SLOW !  
      # from scipy.stats import gaussian_kde

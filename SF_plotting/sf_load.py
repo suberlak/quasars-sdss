@@ -19,23 +19,34 @@ plot the SF  :
 
 import os
 import numpy as np 
-
+import sys
 
 # Read in the LC files 
+args = sys.argv
+if len(args) > 1 : 
+    inDir = args[1]
+    outDir = args[2]
+    outfile = args[3]
+    objType = args[4]
+    
+    if objType == 'qso' :  start = 4 ; end = -8
+    if objType == 'star' :  start=4 ; end = -4
+    
 
-qso_or_star = 'qso'
 
-if qso_or_star == 'star':
-    inDir =  './stars_CRTS_proc_err_w_good_TRY/' 
-    outfile = 'SF_CRTS_stars_master.txt'
-    start=4
-    end=-8
-if qso_or_star == 'qso' :
-    inDir = '../QSO_CRTS_proc_err_w_good/'
-    outfile = 'SF_CRTS_quasars_master.txt'
-    start=4
-    end=-4
-outDir = './sf_TRY/' 
+if len(args) == 1 :
+    qso_or_star = 'qso'
+    if qso_or_star == 'star':
+        inDir =  './stars_CRTS_proc_err_w_good_TRY/' 
+        outfile = 'SF_CRTS_stars_master.txt'
+        start=4
+        end=-8
+    if qso_or_star == 'qso' :
+        inDir = '../QSO_CRTS_proc_err_w_good/'
+        outfile = 'SF_CRTS_quasars_master.txt'
+        start=4
+        end=-4
+    outDir = './sf_TRY/' 
 
 if not os.path.exists(outDir): os.system('mkdir %s' % outDir) 
 
