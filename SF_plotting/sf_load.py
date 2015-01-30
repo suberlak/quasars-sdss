@@ -36,16 +36,26 @@ if len(args) > 1 :
 
 if len(args) == 1 :
     qso_or_star = 'qso'
+
     if qso_or_star == 'star':
         inDir =  './stars_CRTS_proc_err_w_good_TRY/' 
         outfile = 'SF_CRTS_stars_master.txt'
-        start=4
-        end=-8
+        start= 4
+        end=  -8
+        
     if qso_or_star == 'qso' :
         inDir = '../QSO_CRTS_proc_err_w_good/'
         outfile = 'SF_CRTS_quasars_master.txt'
-        start=4
-        end=-4
+        start= 4
+        end=  -4
+        
+    if qso_or_star == 'test':
+        inDir = './qso_TEST/'
+        outfile = 'SF_CRTS_quasars_TEST.txt'
+        start= 4
+        end = -4
+
+# regardless of choice, outDir stays the same 
     outDir = './sf_TRY/' 
 
 if not os.path.exists(outDir): os.system('mkdir %s' % outDir) 
