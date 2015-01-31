@@ -35,7 +35,7 @@ if len(args) > 1 :
 
 
 if len(args) == 1 :
-    qso_or_star = 'qso'
+    qso_or_star = 'test'
 
     if qso_or_star == 'star':
         inDir =  './stars_CRTS_proc_err_w_good_TRY/' 
