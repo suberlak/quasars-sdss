@@ -224,7 +224,7 @@ def ang_sep(ra1, dec1, ra2, dec2):
 # Matching  function    #
 #########################
 
-def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_qso_data, archive_file):
+def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_data, archive_file):
     
     dec_deg = dec_deg_CRTS
     ra_deg = ra_deg_CRTS
@@ -233,13 +233,19 @@ def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_qso_data, archive_file):
     matched_radius = np.zeros_like(ra_deg,dtype=float)
     
     
-    ra_sdss_deg = sdss_qso_data['ra']
-    dec_sdss_deg = sdss_qso_data['dec']
+    ra_sdss_deg = sdss_data['ra']
+    dec_sdss_deg = sdss_data['dec']
+    not_yet_matched = np.ones_like(ra_sdss_deg, dtype=bool) # starts all True, 
+     # and is set to false when an sdss object is definitely matched to CRTS one.
     
+    # Looping over CRTS data (shorter than SDSS)
     for i in range(0,len(ra_deg)):
-        matched_distances = ang_sep(ra_deg[i],dec_deg[i], ra_sdss_deg, dec_sdss_deg)
-        indices = np.where(matched_distances <= 0.001)
-        print 'ra_jav_deg row ', i 
+        angular_separation = ang_sep(ra_deg[i],dec_deg[i], ra_sdss_deg[not_yet_matched], 
+                                    dec_sdss_deg[not_yet_matched])
+        indices = np.where(angular_separation <= 0.001)
+        N_sdss_rows = len(np.where(not_yet_matched == True)[0])
+
+        print 'CRTS ra_deg row ', i, 'using  ', N_sdss_rows, 'SDSS rows'
         check = np.array(indices)
         dims = check.shape
         if (dims[1] == 1.0):
@@ -247,11 +253,12 @@ def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_qso_data, archive_file):
             print 'Obj from CRTS coords: ', ra_deg[i], dec_deg[i]
             print 'Obj from SDSS coords: ', ra_sdss_deg[indices], dec_sdss_deg[indices]
             SDSS_matching_rows[i] = int(indices[0])
+            not_yet_matched[indices] = False
         else :  
             #chelsea_matching_rows[i] = 999999    # 1e6-1
             mask_mismatched[i] = True 
             print 'For CRTS object ra_deg',ra_deg[i] ,'dec_deg',\
-            dec_deg[i],'There is are',dims[1],' matching entries from SDSS results'
+            dec_deg[i],'There is / are',dims[1],' matching entries from SDSS results'
        
          
     # secondary matching : allow bigger margin for those that were not matched : case by case
@@ -259,9 +266,11 @@ def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_qso_data, archive_file):
     
     for i in range(0,len(ra_deg[mask_mismatched])):
         ttl_index = np.where(mask_mismatched == True)[0][i]
-        print '> Matching ra_jav_deg index number', ttl_index
-        matched_distances = ang_sep(ra_deg[mask_mismatched][i],dec_deg[mask_mismatched][i], ra_sdss_deg, dec_sdss_deg)
-        indices = np.where(matched_distances <= 0.001)
+        N_sdss_rows = len(np.where(not_yet_matched == True)[0])
+        print '> Matching ra_jav_deg index number', ttl_index, 'using  ', N_sdss_rows, 'SDSS rows'
+        angular_separation = ang_sep(ra_deg[mask_mismatched][i],dec_deg[mask_mismatched][i], 
+                                    ra_sdss_deg[not_yet_matched], dec_sdss_deg[not_yet_matched])
+        indices = np.where(angular_separation <= 0.001)
         check = np.array(indices)
         dims = check.shape
         radius = 0.001
@@ -271,7 +280,7 @@ def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_qso_data, archive_file):
             while True:
                 radius = radius + 0.001    
                 # print 'Increase matching distance to ',radius
-                indices = np.where(matched_distances <= radius)
+                indices = np.where(angular_separation <= radius)
                 check = np.array(indices)
                 dims = check.shape
                 if(dims[1] ==1):
@@ -286,7 +295,7 @@ def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_qso_data, archive_file):
             while True:
                 radius = radius - 0.0001    
                 print 'Decrease matching distance to ',radius
-                indices = np.where(matched_distances <= radius)
+                indices = np.where(angular_separation <= radius)
                 check = np.array(indices)
                 dims = check.shape
                 if(dims[1] ==1.0):
@@ -307,67 +316,180 @@ def match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_qso_data, archive_file):
             if(np.where(matched_radius > 0.001)[0][i] == np.where(mask_mismatched == True)[0][i]):
                 print 'The radius was increased from 0.001 to ', matched_radius[mask_mismatched][i]
 
-    np.savez(archive_file, SDSS_matching_rows = SDSS_matching_rows ) 
-    return SDSS_matching_rows 
+    np.savez(archive_file, SDSS_matching_rows = SDSS_matching_rows, matched_radius=matched_radius ) 
+    return SDSS_matching_rows, matched_radius 
 
 
-##############  ACTION  : MATCHJNG ###############
+##############  ACTION  : MATCHING QUASARS  ###############
 
 
-# load names from CRTS 
-crts_qso_names = load_crts_qso(crts_dirs[0])
-crts_star_names, crts_star_radec = load_crts_stars(crts_dirs[1])
+def match_quasars():
 
-
-# load data from SDSS
-
-sdss_qso_data =  load_sdss_qso()
+    # load names from CRTS \
+    DIR = crts_dirs[0]
+    crts_qso_names = load_crts_qso(DIR)
     
-# LOOP OVER QUASARS 
-archive_file_qso='CRTS_qso_avg_mag_err_ra_dec.npz'
-# Check whether this has not been done already :
-if not os.path.exists(archive_file_qso) :
-    length= len(crts_qso_names)
-    print '- Computing average mag, err , extracting ra, dec for %i points' % length
+    # load data from SDSS
+    sdss_qso_data =  load_sdss_qso()
+        
+    # LOOP OVER QUASARS 
+    archive_file_qso='CRTS_qso_avg_mag_err_ra_dec.npz'
+    # Check whether this has not been done already :
+    if not os.path.exists(archive_file_qso) :
+        length= len(crts_qso_names)
+        print '- Computing average mag, err , extracting ra, dec for %i points' % length
+        
+        avg_mag=[]
+        avg_err=[]
+        ra_ls =[]
+        dec_ls=[]
+        
+        for i in range(length):
+            file = str(crts_qso_names[i])
+            print '\nFile ',i, 'out of',  length
+            mjd,flx4,err = np.loadtxt(DIR+'%s' % (file),usecols=(0,1,2),unpack=True)
+            avg_mag.append(np.mean(flx4))
+            avg_err.append(np.mean(err))
+            ra_ls.append(file[4:13])
+            dec_ls.append(file[13:-4])
+        np.savez(archive_file_qso, avg_mag=avg_mag, avg_err=avg_err, ra_ls=ra_ls, 
+                 dec_ls=dec_ls )   
+                 
+    else: 
+        print '- Using precomputed CRTS qso average values for mag, err, and ra, dec results'
+        archive = np.load(archive_file_qso)
+        avg_mag = archive['avg_mag']
+        avg_err  = archive['avg_err']
+        ra_ls = archive['ra_ls']
+        dec_ls  = archive['dec_ls']
+       
+    # Split CRTS  ra, dec from hms to h m s 
+    ra_hms_split, dec_hms_split = get_ra_dec_CRTS(ra_ls, dec_ls)
+    # Convert CRTS  ra, dec from hms to deg  
+    ra_deg_CRTS, dec_deg_CRTS = convert_to_deg(ra_hms_split, dec_hms_split)
     
-    avg_mag=[]
-    avg_err=[]
-    ra_ls =[]
-    dec_ls=[]
+    # Matching CRTS to SDSS  : which SDSS row corresponds to which CRTS row... 
+    archive_file_matching = 'CRTS_SDSS_qso_matched_rows_radii.npz'
     
-    for i in range(length):
-        file = str(crts_qso_names[i])
-        print '\nFile ',i, 'out of',  length
-        mjd,flx4,err = np.loadtxt(crts_dirs[0]+'%s' % (file),usecols=(0,1,2),unpack=True)
-        avg_mag.append(np.mean(flx4))
-        avg_err.append(np.mean(err))
-        ra_ls.append(file[4:13])
-        dec_ls.append(file[13:-4])
-    np.savez(archive_file_qso, avg_mag=avg_mag, avg_err=avg_err, ra_ls=ra_ls, 
-             dec_ls=dec_ls )   
-             
-else: 
-    print '- Using precomputed CRTS qso average values for mag, err, and ra, dec results'
-    archive = np.load(archive_file_qso)
-    avg_mag = archive['avg_mag']
-    avg_err  = archive['avg_err']
-    ra_ls = archive['ra_ls']
-    dec_ls  = archive['dec_ls']
+    if not os.path.exists(archive_file_matching) :
+        print '- Computing the SDSS matching rows to CRTS quasars'
+        SDSS_matching_rows , matched_radius= match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_data = sdss_qso_data, archive_file=archive_file_matching) 
+    else:
+        print '- Using precomputed SDSS rows matched to CRTS quasars'
+        archive =np.load(archive_file_matching)
+        SDSS_matching_rows = archive['SDSS_matching_rows']
+        matched_radius = archive['matched_radius']
+        
+        
+        
+    # Saving a combined cross-matched SDSS-CRTS quasars dataset 
+        
+    ind = SDSS_matching_rows
+    
+    sdss_qso_data.keys()
+    datatable=np.array([avg_mag, avg_err, sdss_qso_data['M_i'][ind], sdss_qso_data['redshift'][ind], 
+               sdss_qso_data['ra'][ind], sdss_qso_data['dec'][ind], ra_deg_CRTS, dec_deg_CRTS, matched_radius])
+    colnames = ['CRTS_avg_mag','CRTS_avg_err','M_i', 'redshift', 'dec_CRTS', 'ra_CRTS', 'dec_SDSS','ra_SDSS', 'R_match']
+    # colnames is read from the right....
+    
+    data_qso_SDSS_CRTS= {}
+    print 'Zipping the stars...'
+    
+    for label, column in zip(colnames, datatable):
+        data_qso_SDSS_CRTS[label] = column
+    print 'I made a dictionary with data for ', len(data_qso_SDSS_CRTS['R_match']), ' SDSS-CRTS cross-matched quasars'
+    
+    print 'Saving the SDSS-CRTS cross-matched QSO catalog...' 
+    
+    archive_SDSS_CRTS_qso = 'CRTS_SDSS_cross_matched_qso_catalog.txt' 
+    keys = colnames
+    DATA = np.column_stack((data_qso_SDSS_CRTS[keys[8]], 
+                            data_qso_SDSS_CRTS[keys[7]], 
+                            data_qso_SDSS_CRTS[keys[6]],data_qso_SDSS_CRTS[keys[5]],
+                            data_qso_SDSS_CRTS[keys[4]], data_qso_SDSS_CRTS[keys[3]], 
+                            data_qso_SDSS_CRTS[keys[2]], data_qso_SDSS_CRTS[keys[1]],
+                            data_qso_SDSS_CRTS[keys[0]]))    
+    
+    header=''
+    for key in keys[::-1] : 
+        header= header+'{:<10}'.format(key[:10])
+    
+    
+    
+    fmt = ['%s', '%.4e', '%10.5f']
+    
+    np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt=fmt[2], header=header)
+
+#match_quasars()       
+
+
+##############  ACTION  : MATCHING STARS  ###############
+
+ 
+
+def match_stars():
+    # load names from CRTS
+    DIR = crts_dirs[1]
+    
+    crts_star_names, crts_star_radec = load_crts_stars(DIR)
+        
+    # LOOP OVER STARS 
+    archive_file_qso='CRTS_stars_avg_mag_err_ra_dec.npz'
+    # Check whether this has not been done already :
+    if not os.path.exists(archive_file_qso) :
+        length= len(crts_star_names)
+        print '- Computing average mag, err , extracting ra, dec for %i points' % length
+        
+        avg_mag=[]
+        avg_err=[]
+        ra_ls  =[]
+        dec_ls =[]
+    
+        
+        for i in range(length):
+            file = str(crts_star_names[i])
+            print '\nFile ',i, 'out of',  length
+            mjd,flx4,err = np.loadtxt(DIR+'%s' % (file),usecols=(0,1,2),unpack=True)
+            avg_mag.append(np.mean(flx4))
+            avg_err.append(np.mean(err))
+            
+            name_mask = crts_star_radec['CRTS_ID'] == float(crts_star_names[i][4:-8])
+            ra_ls.append(crts_star_radec['ra'][name_mask][0])
+            dec_ls.append(crts_star_radec['dec'][name_mask][0])
+        np.savez(archive_file_qso, avg_mag=avg_mag, avg_err=avg_err, ra_ls=ra_ls, 
+                 dec_ls=dec_ls )   
+                 
+    else: 
+        print '- Using precomputed CRTS qso average values for mag and  err results'
+        archive = np.load(archive_file_qso)
+        avg_mag = archive['avg_mag']
+        avg_err  = archive['avg_err']
+        ra_ls = archive['ra_ls']
+        dec_ls  = archive['dec_ls']
+        
+    # My CRTS coordinates are already in  degrees...
+        
+    ra_deg_CRTS = ra_ls
+    dec_deg_CRTS = dec_ls  
+    # Matching CRTS to SDSS  : which SDSS row corresponds to which CRTS row... 
+    archive_file_matching = 'CRTS_SDSS_stars_matched_rows_radii.npz'
+    
+    return ra_ls, dec_ls 
+    
+    # Load data from SDSS
+#    sdss_star_data =  load_sdss_stars()
+#    
+#    if not os.path.exists(archive_file_matching) :
+#        print '- Computing the SDSS matching rows to CRTS stars'
+#        SDSS_matching_rows , matched_radius= match_CRTS_to_SDSS(ra_deg_CRTS, dec_deg_CRTS, sdss_data = sdss_star_data, archive_file=archive_file_matching) 
+#    else:
+#        print '- Using precomputed SDSS rows matched to CRTS stars'
+#        archive =np.load(archive_file_matching)
+#        SDSS_matching_rows= archive['SDSS_matching_rows']
+#        matched_radius = archive['matched_radius']
+#        
+#        
+        
    
-# Split ra, dec from hms to deg ...   
-  
-ra_hms_split, dec_hms_split = get_ra_dec_CRTS(ra_ls, dec_ls)
-ra_deg, dec_deg = convert_to_deg(ra_hms_split, dec_hms_split)
 
-# Matching CRTS to SDSS  : which SDSS row corresponds to which CRTS row... 
-archive_file_matching = 'CRTS_SDSS_qso_matched_rows.npz'
-
-if not os.path.exists(archive_file_matching) :
-    print '- Computing the SDSS matching rows to CRTS quasars'
-    SDSS_matching_rows_qso = match_CRTS_to_SDSS(ra_deg, dec_deg, sdss_qso_data, archive_file=archive_file_matching) 
-else:
-    print '- Using precomputed SDSS rows matched to CRTS quasars'
-    archive =np.load(archive_file_matching)
-    SDSS_matching_rows_qso = archive['SDSS_matching_rows']
-    
-    
+ra, dec = match_stars()
