@@ -94,11 +94,9 @@ def load_crts_stars(inDir):
 #  name scheme : out_000456.17+000645.5.txt
 
 def load_crts_qso(inDir):
-    # load names of quasars
-    inFiles = 'out.list'
-    CRTS_qso = np.loadtxt(inDir+inFiles, dtype= str)  
+    # load names of quasars, which already contain ra and dec infor 
+    CRTS_qso  = os.listdir(inDir)
     print '\nI loaded names of ', len(CRTS_qso), ' CRTS quasars'
-    # merge the two, and at the end save as separate files...
     return CRTS_qso
 
 crts_dirs = ['../QSO_CRTS_processed_err_w/','../stars_CRTS_proc_err_w_good/']
@@ -287,8 +285,8 @@ def match_stars():
                         sdss_star_data['g_mMed'][ind], sdss_star_data['i_mMed'][ind],
                         crts_id, mjd_span, mjd_uniq_N, N_rows ])
     colnames = ['CRTS_M','CRTS_Merr', 'dec_SDSS', 'ra_SDSS', 'dec_CRTS',
-                'ra_CRTS', 'g_Nobs', 'g_mMed', 'i_MMed', 'crts_id', 'mjd_span', 
-                'mjd_uniq_N', 'N_rows']
+                'ra_CRTS', 'g_Nobs', 'g_mMed', 'i_mMed', 'crts_id', 'mjd_span', 
+                'mjd_N', 'N_rows']
     
 #    colnames = ['calib_fla', 'ra', 'dec', 'raRMS', 'decRMS', 'nEpochs', 'AR_val', 
 #                'u_Nobs', 'u_mMed', 'u_mMean', 'u_mErr', 'u_rms_scatt', 'u_chi2',
@@ -319,7 +317,7 @@ def match_stars():
     
     header=''
     for key in keys[::-1] : 
-        header= header+'{:<10}'.format(key[:10])
+        header= header+'{:<10}'.format(key[:10])+' '
     
     fmt = ['%s', '%.4e', '%10.5f']   # formatters to choose from...  
     
@@ -327,10 +325,8 @@ def match_stars():
     print 'All done with star catalogs, please see: ' , archive_SDSS_CRTS
     
     return SDSS_matching_rows, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data 
+       
     
-SDSS_idx, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data  = match_stars()    
-    
-
 ##############  ACTION  : MATCHING QUASARS  ############### 
 
     
@@ -433,15 +429,22 @@ def match_quasars():
     ind = SDSS_matching_rows
     
     sdss_qso_data.keys()
+    
+    
+    # Save the list of names of CRTS Quasars 
+    qso_names_file = 'CRTS_SDSS_cross_matched_qso_names.txt'
+    np.savetxt(qso_names_file, crts_qso_names, fmt='%s')
+    print '\nSaving the SDSS-CRTS quasar file names to',   qso_names_file
+    # Save all other measurable quantities for CRTS - SDSS quasars 
     datatable=np.array([avg_mag, avg_err, sdss_qso_data['M_i'][ind], sdss_qso_data['redshift'][ind], 
                sdss_qso_data['ra'][ind], sdss_qso_data['dec'][ind], ra_deg_CRTS, dec_deg_CRTS,
-                 mjd_span, mjd_uniq_N, N_rows  ])
+                 mjd_span, mjd_uniq_N, N_rows])
     colnames = ['CRTS_avg_mag','CRTS_avg_err','M_i', 'redshift', 'dec_CRTS', 'ra_CRTS', 
     'dec_SDSS','ra_SDSS', 'mjd_span', 'mjd_uniq_N', 'N_rows']
-    # colnames is read from the right....
+    # NOTE: colnames is read from the right....
     
     data_qso_SDSS_CRTS= {}
-    print 'Zipping  quasars...'
+    print '\nZipping  quasars...'
     
     for label, column in zip(colnames, datatable):
         data_qso_SDSS_CRTS[label] = column
@@ -449,11 +452,12 @@ def match_quasars():
     
     archive_SDSS_CRTS_qso = 'CRTS_SDSS_cross_matched_qso_catalog.txt'
 
-    print 'Saving the SDSS-CRTS cross-matched QSO catalog...' 
+    print '\nSaving the SDSS-CRTS cross-matched QSO catalog...' 
     print ' to ', archive_SDSS_CRTS_qso
      
     keys = colnames
-    DATA = np.column_stack((data_qso_SDSS_CRTS[keys[10]], data_qso_SDSS_CRTS[keys[9]], 
+    DATA = np.column_stack((
+                            data_qso_SDSS_CRTS[keys[10]], data_qso_SDSS_CRTS[keys[9]], 
                             data_qso_SDSS_CRTS[keys[8]],  data_qso_SDSS_CRTS[keys[7]], 
                             data_qso_SDSS_CRTS[keys[6]],  data_qso_SDSS_CRTS[keys[5]],
                             data_qso_SDSS_CRTS[keys[4]],  data_qso_SDSS_CRTS[keys[3]], 
@@ -462,12 +466,16 @@ def match_quasars():
     
     header=''
     for key in keys[::-1] : 
-        header= header+'{:<10}'.format(key[:10])
+        header= header+'{:<10}'.format(key[:10])+' '
     
     
     
-    fmt = ['%s', '%.4e', '%10.5f']
+    #fmt = ['%s', '%.4e', '%10.5f']
     
-    np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt=fmt[2], header=header)
+    np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%5.i'*2+'%6.i'+'%11.5f'*8, header=header)
+    return crts_qso_names
 
-match_quasars()
+# Call all the necessary functions
+#SDSS_idx, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data  = match_stars() 
+crts = match_quasars()
+match_stars()
