@@ -198,6 +198,10 @@ def get_plotted_quantities(data,  nbins):
     bin_count = binned_count[0]
     #bin_names = np.arange(1,len(binned_count[2]))
     
+     # Calculate median preprocessed photometric error per bin 
+    binned_err_median = binned_statistic(tau, delflxerr, statistic='median', bins=nbins) 
+    err_median = binned_err_median[0]
+    
     # checking for empty bins : either mean or some custom function, but not
     # count! If statistic='count', then check for 0's , and not for nan's/ 
     non_empty_bins = np.bitwise_not(np.isnan(mean_tau))
@@ -206,6 +210,8 @@ def get_plotted_quantities(data,  nbins):
     
     bin_count = bin_count[non_empty_bins]
     mean_tau = mean_tau[non_empty_bins]
+    err_median = err_median[non_empty_bins]
+      
     
     ####
     ####  Panel 1 : Standard Deviation 
@@ -213,6 +219,7 @@ def get_plotted_quantities(data,  nbins):
     
     stdev_binned = binned_statistic(tau, delflx, statistic = rms_std, 
                                               bins=nbins)
+    
     
     bin_stdev = stdev_binned[0][non_empty_bins]  
     bin_number = stdev_binned[2]  
@@ -255,9 +262,9 @@ def get_plotted_quantities(data,  nbins):
     plot_data = {}
     print ' passing on the  plot data...'
     colnames = ['mean_tau', 'bin_stdev', 'err_stdev', 'bin_sigma_G', 'err_sigma_G',
-                'mu_approx', 'SF', 'err_SF', 'err_mu_approx']
+                'mu_approx', 'SF', 'err_SF', 'err_mu_approx', 'err_median']
     datatable = [mean_tau, bin_stdev, err_stdev, bin_sigma_G, err_sigma_G, 
-                 mu_approx, SF, err_SF, err_mu_approx]
+                 mu_approx, SF, err_SF, err_mu_approx, err_median]
     for label, column in zip(colnames, datatable):
         plot_data[label] = column    
     
@@ -450,9 +457,56 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     fig1.subplots_adjust(hspace=0)
     plt.savefig(title2)
     plt.show()
-  
-
-           
+    
+    # Make a separate  figure for the sigma_G vs delta(t) on a linear scale
+    # plotting EXACTLY THE SAME  as for ax4 above, but on a linear x-scale
+    # thus I am NOT TAKING np.log10  of x-quantities 
+    
+    plt.clf()
+    print 'Hello Im here! '
+    fig2 = plt.figure(figsize=(12,4))
+    ax1 = fig2.add_subplot(111)
+    ax1.scatter(qso_plot['mean_tau'], qso_plot['mu_approx'],
+                s=p_size, alpha=p_al,c = col1 )
+    ax1.errorbar(qso_plot['mean_tau'], qso_plot['mu_approx'], 
+                 qso_plot['err_mu_approx'], linestyle='None',c = col1)
+                 
+    ax1.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
+    ax1.set_ylim(top=0.6, bottom=-0.2)
+    #ax1.set_xlim(left=x_left, right=x_right)
+    ax1.set_yticks([-0.1,0,0.1,0.2,0.3,0.4,0.5])
+    ax1.set_yticklabels(['-0.1','0.0','0.1', '0.2', '0.3', '0.4', '0.5'])  
+    ax1.set_ylabel(r'$\mu_{approx}$', fontsize=20)
+    ax1.grid(axis='x')
+    ax1.set_xlabel(r'$\Delta _{t}$ [days]',fontsize=20)
+    
+    title3 = 'Sigma_del_t_'+choice+'_'+str(nbins)+'_bins_'+str(sample)+'.png'
+    plt.savefig(title3)
+    plt.show()
+    
+def plot_qso_stats(qso_cat):
+    plt.clf()
+    nbins = 20  
+    fig2 = plt.figure(figsize=(12,12))
+    ax1 = fig2.add_subplot(311)
+    ax1.hist(qso_cat['CRTS_avg_m'], bins=nbins)
+    ax1.set_title('CRTS Quasars Magnitude')
+    
+    ax2 = fig2.add_subplot(312)
+    ax2.hist(qso_cat['CRTS_avg_e'], bins=nbins)
+    ax2.set_title('CRTS Quasars Error')
+    
+    ax3 = fig2.add_subplot(313)
+    ax3.hist(qso_cat['redshift'], bins=nbins)
+    ax3.set_title('CRTS Quasars Redshift')
+    
+    
+    fig2.subplots_adjust(hspace=0.5)
+    
+    plt.savefig('QSO_CRTS_histograms.png')
+    
+    
+    
 
 def sf_plotting(tau,delflx, delflxerr, master_names , sample ,choice, 
                 nbins=100):
@@ -648,7 +702,7 @@ def sf_plotting(tau,delflx, delflxerr, master_names , sample ,choice,
     return SF
  
 
-def plot_single_SF(inDir, good_ids, choice):
+def plot_single_SF(inDir,  choice, good_ids):
     # Load the 'master' files... 
     inDir = inDir
     good_ids = good_ids
@@ -661,7 +715,7 @@ def plot_single_SF(inDir, good_ids, choice):
     err    = np.empty(0,dtype=float)
     master_acc_list = np.empty(0, dtype=str)
         
-    for i in range(1): # len(masterFiles)
+    for i in range(len(masterFiles)): # len(masterFiles)
         master = np.genfromtxt(inDir+masterFiles[i], dtype=str)
         master_names = master[:,3]
         unique_names = np.unique(master_names)
@@ -788,14 +842,30 @@ def plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
     
 inDirStars   = 'sf_TRY/sf_stars/'
 inDirQSO = 'sf_TRY/sf_qso/'
+
+
+# Plotting stars and quasars on one plot .... 
+
 good_ids_S_blue  = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = -1, gi_Max=1)
 good_ids_S_red = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = 1, gi_Max=3)
-
 good_ids_QSO = cut_qso()
 
 out = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                   good_ids_QSO)
-                    
-  
-#out_qso = plot_SF(inDir='sf_TRY/sf_qso/',good_ids = cut_qso(), choice='qso' )
+                  good_ids_QSO)
+
+#plot_qso_stats(qso_cat)
+
+# Plot smallest error Quasars  : Merr < 0.05 mag 
+#good_ids = cut_qso(mErrMax = 0.05 , mMax = 20)  
+#out_qso = plot_single_SF(inDir='sf_TRY/sf_qso/',choice='qso0.05', good_ids = good_ids )
+
+
+# Plot small error Quasars  : Merr < 0.1 mag 
+#good_ids = cut_qso(mErrMax = 0.1 , mMax = 20)  
+#out_qso = plot_single_SF(inDir='sf_TRY/sf_qso/',choice='qso0.1', good_ids = good_ids )
+
+# Plot big error Quasars : Merr < 0.2 Mag 
+#good_ids = cut_qso(mErrMax = 0.2, mMax = 20 )  
+#out_qso = plot_single_SF(inDir='sf_TRY/sf_qso/',choice='qso0.2', good_ids = good_ids)
+
 #plot_SF(inDir='sf_TRY/sf_stars/',good_ids = cut_stars(), choice='star' )
