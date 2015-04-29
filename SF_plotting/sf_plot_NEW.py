@@ -20,6 +20,11 @@ c)  Load the 'master' files (outpuf of sf_load_NEW.py), from sf_TRY dir,  and :
 import os
 import numpy as np 
 import matplotlib.pyplot as plt 
+import matplotlib
+from scipy.stats import norm
+from scipy.optimize import curve_fit
+import matplotlib.mlab as mlab
+from matplotlib.ticker import FuncFormatter
 matplotlib.rcParams['font.size'] = 17
 from scipy.stats import binned_statistic
 import sys
@@ -77,7 +82,7 @@ def cut_qso(qso_cat=qso_cat, qso_names=qso_names, mMin=-9, mMax=19,
     qso_id = qso_names[mask]
     print '\n These cuts reduced the number of qso  in the sample from', \
           len(qso_cat['redshift']), ' to ', len(qso_id)
-    return  qso_id
+    return  qso_id, mask 
 
 def cut_stars(star_cat=star_cat, mMin=-9, mMax=19, mErrMin = -9, 
               mErrMax = 0.2, gi_Min = -1, gi_Max=1  ):
@@ -126,6 +131,40 @@ def approximate_mu_sigma(xi, ei, axis=None):
 
     return mu_approx, sigma_approx
 
+
+def gaussgauss_logL(xi, ei, mu, sigma):
+    """Equation 5.63: gaussian likelihood with gaussian errors"""
+    ndim = len(np.broadcast(sigma, mu).shape)
+
+    xi = xi.reshape(xi.shape + tuple(ndim * [1]))
+    ei = ei.reshape(ei.shape + tuple(ndim * [1]))
+
+    s2_e2 = sigma ** 2 + ei ** 2
+    return -0.5 * np.sum(np.log(s2_e2) + (xi - mu) ** 2 / s2_e2,
+                         -1 - ndim)
+              
+def p_sigma_mu(xi, ei):
+    '''
+    Instead of calculating approximate mu and sigma with approximate_mu_sigma(),
+    I calculate their distribution p_sigma, p_mu, and choose the best value...
+    The exact method, more time-consuming than the approximate_mu_sigma() but 
+    better 
+    '''
+    # I assume sigma and mu range as I think they are for my distribution 
+    sigma = np.linspace(0.00, 0.5, 100)
+    mu = np.linspace(-0.2, 0.2, 40)
+    
+    logL = gaussgauss_logL(xi, ei, mu, sigma[:, np.newaxis])
+    logL -= logL.max()
+    L = np.exp(logL)
+    
+    p_sigma = L.sum(1)
+    p_sigma /= (sigma[1] - sigma[0]) * p_sigma.sum()
+    
+    p_mu = L.sum(0)
+    p_mu /= (mu[1] - mu[0]) * p_mu.sum()
+    
+    return p_mu, p_sigma
 #######################
 # PLOTTING FUNCTIONS  #
 #######################
@@ -172,19 +211,94 @@ def plot_three_lines(delflx, mean_tau, bin_means, tau, bin_rms_std,
     plt.savefig(title1)
     plt.show()
 
+def get_histogram(xdata, nbins,N_hist_ttl):
+    # Calculate unnormalized histogram, divided by the N_sample at the end 
 
-def get_plotted_quantities(data,  nbins):
+    hist, bin_edges = np.histogram(xdata, bins=nbins, density=False) 
+    # density = False instead of density = True 
+    # ensures I do the normalisation my way : then I need to calculate the area 
+    # under the curve, and scale up the gaussian so that they are normalised with 
+    # respect to each other , but not to unit area  
+    
+    bin_cen = (bin_edges[:-1] + bin_edges[1:])/2 
+    hist  = hist / N_hist_ttl
+    print 'N_hist_ttl=', N_hist_ttl
+    
+    bin_width = (bin_edges[-1] - bin_edges[0]) / float(nbins)
+    area = np.sum(bin_width * hist)
+    # Calculate normalised histogram, so that the INTEGRAL under the curve=1
+    # This allows me to overplot the Gaussian too! 
+
+    hist_n, edges = np.histogram(xdata, bins=nbins, density=True)
+    # Just in case, also calculate the histogram normalized to 1  
+    
+    return hist, hist_n, bin_cen, area
+    
+
+def to_percent(y, position):
+    # Ignore the passed in position. This has the effect of scaling the default
+    # tick locations.
+    s = str(100 * y)
+
+    # The percent symbol needs escaping in latex
+    if matplotlib.rcParams['text.usetex'] == True:
+        return s + r'$\%$'
+    else:
+        return s + '%'
+        
+def gaussian(x,mu,sigma):
+    exponent = -(x-mu)**2.0 / (2.0 * (sigma ** 2.0))
+    f = (1.0 / (np.sqrt(2.0*np.pi)*sigma)) * np.exp(exponent)    
+    return f
+    
+def model_sf(t, sf_inf=0.25, tau = 1.0):
+    br = 1.0-np.exp(-t/tau)
+    sf = sf_inf * np.power(br,0.5)
+    return sf
+
+
+def get_plotted_quantities(data,  nbins,bins_hist, err_factor=1.0):
     '''
-    Create input for plot_panels()
+    Create input for sf_plot_panels()
     '''    
     delflx = data[0]
     tau = data[1]
-    delflxerr = data[2]
+    delflxerr = data[2]*err_factor #  for error experiment 
+    
+    # Pick delflx and delflxerr values for histograms
+    mask =np.log10(tau)<1.7
+    tau_sm = tau[mask]
+    N_hist_ttl = float(len(tau_sm))
+    delflx_sm = delflx[mask]
+    delflxerr_sm = delflxerr[mask]
+    # For delta_Mag / err : need to limit the range fo histogram, etc. 
+    flx_err = delflx_sm / delflxerr_sm
+    flx_err = flx_err[(flx_err<5.0) * (flx_err>-5.0)]
+    N_flx_err = float(len(flx_err))
+    # Calculate histograms... (values of counts are normalized : 
+    #                          n_bin / N_in_sample)
+    print 'Calculating histograms content...'
+    hist_tau , hist_tau_n, bin_tau_cen , area_tau = get_histogram(xdata=tau_sm, nbins=bins_hist,
+                                           N_hist_ttl=N_hist_ttl)
+    hist_delflx , hist_delflx_n, bin_delflx_cen, area_delflx= get_histogram(xdata=delflx_sm, nbins=bins_hist,
+                                                N_hist_ttl=N_hist_ttl)
+    hist_err, hist_err_n, bin_err_cen, area_err = get_histogram(xdata=delflxerr_sm, 
+                                                      nbins=bins_hist,
+                                                      N_hist_ttl=N_hist_ttl)
+    hist_flx_err, hist_flx_n, bin_flx_err, area_flx_err = get_histogram(xdata= flx_err,
+                                                 nbins=bins_hist, N_hist_ttl = N_flx_err)                  
+    
+    # Calculate all the statistics for the sample... 
+    # sigma_std,   sigma_G,  mean,  SF , etc.. 
+    
+    st = gauss_stats(tau_sm, delflx_sm, delflxerr_sm, flx_err)
+    
     #master_acc_list = data[3]
     
     # Define functions for bin statistics 
     rms_robust = lambda x : 0.7414 *(np.percentile(x,75) - np.percentile(x,25))
     rms_std = lambda x : np.std(x)
+        
     nbins = nbins # ensure uniform sampling in all statistics (same bins...)
     
     # Calculate bin statistics 
@@ -242,6 +356,9 @@ def get_plotted_quantities(data,  nbins):
     ##### Panel 3 : SF  , Panel 4 : mu_approx   
     
     # Perform the calculation analoguous to AstroML fig. 5.8: 
+    # Approximate way 
+    # I loop over bins: each mu_i, sigma_i, is an approximate value for that 
+    # calculated for delflx and delflxerr in a given bin  
     
     mu_approx = []
     sigma_approx=[]
@@ -259,27 +376,96 @@ def get_plotted_quantities(data,  nbins):
     err_SF = SF * 1.06 / np.sqrt(bin_count)
     err_mu_approx = bin_stdev / np.sqrt(bin_count)
     
+    # Exact way : calculating log-Likelihood for a range of values and 
+    # Choosing the best one 
+    # this code comes verbatim from fig. 5.8 on AstroML, but I make 
+    # arrays of sigma and mu values more relevant to our problem 
+
+  
+    p_mu =[]
+    p_sigma=[]
+    for N in np.unique(bin_number):
+        xi = delflx[bin_number == N]
+        ei = delflxerr[bin_number == N]
+        mu_i_p, sigma_i_p = p_sigma_mu(xi,ei)
+        p_mu.append(mu_i_p)
+        p_sigma.append(sigma_i_p)
+        
+    p_mu = np.array(p_mu)
+    p_sigma = np.array(p_sigma)
+    
     plot_data = {}
     print ' passing on the  plot data...'
     colnames = ['mean_tau', 'bin_stdev', 'err_stdev', 'bin_sigma_G', 'err_sigma_G',
-                'mu_approx', 'SF', 'err_SF', 'err_mu_approx', 'err_median']
+                'mu_approx', 'SF', 'err_SF', 'err_mu_approx', 'err_median', 
+                'hist_tau', 'hist_tau_n', 'bin_tau_cen', 'hist_delflx' ,
+                'hist_delflx_n',  'bin_delflx_cen', 'hist_err' , 'hist_err_n', 
+                'bin_err_cen', 'st', 'area_tau', 'area_delflx','area_err' ,
+                'hist_flx_err', 'hist_flx_n', 'bin_flx_err', 'area_flx_err',
+                'p_mu', 'p_sigma']
     datatable = [mean_tau, bin_stdev, err_stdev, bin_sigma_G, err_sigma_G, 
-                 mu_approx, SF, err_SF, err_mu_approx, err_median]
+                 mu_approx, SF, err_SF, err_mu_approx, err_median, 
+                 hist_tau , hist_tau_n, bin_tau_cen, hist_delflx , 
+                 hist_delflx_n, bin_delflx_cen,  hist_err , hist_err_n, 
+                 bin_err_cen, st, area_tau, area_delflx, area_err,
+                 hist_flx_err, hist_flx_n, bin_flx_err, area_flx_err,
+                 p_mu, p_sigma]
+                 
     for label, column in zip(colnames, datatable):
         plot_data[label] = column    
     
     return plot_data
+
+def gauss_stats(tau,y, y_err, flx_err):
+    # Define functions for bin statistics 
+    rms_robust = lambda x : 0.7414 *(np.percentile(x,75) - np.percentile(x,25))
+    rms_std = lambda x : np.std(x)
+        
+    # Calculate statistics on histograms... 
+    sigma_stdev = binned_statistic(tau,y, statistic=rms_std, bins=1)[0][0]
+    sigma_G = binned_statistic(tau,y, statistic=rms_robust, bins=1)[0][0]
+    
+    # Calculate sigma_approx and mu_approx using Fig.5.7 code
+    xi = y   # delflx[mask]
+    ei = y_err  # delflxerr[mask]
+    mu_app, sigma_app = approximate_mu_sigma(xi, ei)
+    SF = sigma_app
+    mu_mean = np.mean(y)
+    
+    # fit a gaussian
+    # http://stackoverflow.com/questions/7805552/fitting-a-histogram-with-python
+    # best fit of data
+    (mu_gauss, sigma_gauss) = norm.fit(y)
+    (mu_gauss_2, sigma_gauss_2) = norm.fit(flx_err)
+    
+    print ' Returning statistics on the chosen subsample of the  plot data...'
+    stat_data = {}    
+    colnames = ['sigma_stdev', 'sigma_G', 'SF', 'mu_app','mu_gauss', 
+                'sigma_gauss', 'mu_mean','mu_gauss_2', 'sigma_gauss_2']
+    datatable = [sigma_stdev, sigma_G, SF, mu_app, mu_gauss, 
+                 sigma_gauss, mu_mean , mu_gauss_2, sigma_gauss_2]
+    for label, column in zip(colnames, datatable):
+        stat_data[label] = column    
+    
+    return stat_data  
            
-def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins):  
+def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, 
+                   nbins, bins_hist, err_factor):  
     '''
-    Plot the four panels, first getting quantities to plot for stars, and then 
-    for quasars, and then plotting them altogether 
+    NEW : instead of sf_plotting, this routine is more versatile, as it 
+    calls external function  get_plotted_quantities()  to actually 
+    calculate the things to be plotted : means of delmag  per bin, etc. 
+    
+    It plots the four panels, first getting quantities to plot for stars, 
+    and then for quasars, and then plotting them altogether . It also 
+    creates a separate figure that plots mu_approx on a linear scale 
     '''               
     
     # First calculate plotted quantities 
-    qso_plot  = get_plotted_quantities(qso_data, nbins)
-    star_plot = get_plotted_quantities(star_data_blue, nbins)
-    star_plot1 = get_plotted_quantities(star_data_red, nbins)
+    
+    qso_plot  = get_plotted_quantities(qso_data, nbins, bins_hist,err_factor)
+    star_plot = get_plotted_quantities(star_data_blue, nbins, bins_hist,err_factor)
+    star_plot1 = get_plotted_quantities(star_data_red, nbins, bins_hist,err_factor)
          
 
     # ####################################
@@ -290,19 +476,30 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     N_qso = len(np.unique(qso_data[3]))
     N_star_b = len(np.unique(star_data_blue[3]))
     N_star_r = len(np.unique(star_data_red[3]))
+    
+    # set all plot parameters
     lh_w   = 1.0  # horizontal line thickness 
     lh_st  = '--' # horizontal line style 
     lh_al  = 0.5  # horizontal line alpha parameter 
+    # dot size 
     p_size = 10
     p_al   = 0.5 
-    y_top  = 0.6
+    # y limits for sigma, sigma_G, SF panels 
+    y_top  = 0.45
     y_bott = -0.05
+    # y limits for mu approx 
+    y_mu_top = 0.1
+    y_mu_bott = -0.1
+    # x limits for ALL PANELS 
     x_left = 0.5
     x_right = 3.7
+    # colors for quasars, blue and red stars 
     col1 = 'black'
     col2 = 'blue'
     col3   = 'red'
     
+    # histograms:
+    lw_h = 2
     plt.clf()
     fig1 = plt.figure(figsize=(12,16))
 
@@ -311,6 +508,19 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     
     ax1.set_title('SF '+str(N_qso)+' qso, '+str(N_star_b)+' blue, and '+ 
       str(N_star_r)+' red  stars, '+ str(nbins)+  ' bin means', fontsize=20)    
+    
+    # Fiducial DRW     
+    # Fitting to QSOs , and y-data from panel 3 (SF)
+    # Used for Panel 1 and Panel 2 
+    
+    xdata = qso_plot['mean_tau']
+    sf = qso_plot['SF']    
+    popt, pcov = curve_fit(model_sf, xdata, sf)
+    y = model_sf(xdata, sf_inf=popt[0], tau = popt[1]) # tau 1 year in days 
+    
+    err_sig = qso_plot['err_stdev']
+    sf_folded = np.sqrt((y ** 2.0)+ (err_sig ** 2.0) )
+    ax1.plot(np.log10(xdata), sf_folded , lw=3, c = 'orange', ls='--')
     
     # quasars ...
     ax1.scatter(np.log10(qso_plot['mean_tau']), qso_plot['bin_stdev'], s=p_size, 
@@ -336,8 +546,9 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
                     top='off', labelbottom='off') 
     ax1.set_ylim(bottom=y_bott, top=y_top)
     ax1.set_xlim(left=x_left, right=x_right)
-    ax1.set_yticks([0,0.1,0.2,0.3,0.4,0.5])
-    ax1.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4', '0.5'])
+    ax1.set_yticks([0,0.1,0.2,0.3,0.4])
+    ax1.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+    ax1.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax1.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax1.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax1.grid(axis='x')
@@ -349,6 +560,14 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     
     print 'Plotting sigma_Gaussian  vs Delta t ... '
     ax2 = fig1.add_subplot(412)
+    
+    # Fiducial DRW 
+    # seems relevant... http://stackoverflow.com/questions/26058792/correct-fitting-with-scipy-curve-fit-including-errors-in-x
+    # 
+    
+    err=qso_plot['err_median']
+    sf_folded  = np.sqrt((y**2.0) + (err ** 2.0) )
+    ax2.plot(np.log10(xdata), sf_folded , lw=3, c = 'orange', ls='--')
     
     # quasars 
     ax2.scatter(np.log10(qso_plot['mean_tau']), qso_plot['bin_sigma_G'],
@@ -374,8 +593,9 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     ax2.set_ylabel(r'$\sigma_{G} = 0.7413 \cdot (q_{75} - q_{25}) $',fontsize=20)
     ax2.tick_params( axis='x', which='both',  bottom='off', 
                     top='off', labelbottom='off') 
-    ax2.set_yticks([0,0.1,0.2,0.3,0.4,0.5])
-    ax2.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4', '0.5'])
+    ax2.set_yticks([0,0.1,0.2,0.3,0.4])
+    ax2.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+    ax2.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax2.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
     ax2.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
     ax2.grid(axis='x')
@@ -389,8 +609,12 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     
     print ' Plotting SF vs Delta t... ' 
     ax3 = fig1.add_subplot(413)
-    
-    # qusasars
+        
+    # Plot fiducial DRW, parameters calculated before panel 1
+    ax3.plot(np.log10(xdata), y , lw=3, c = 'orange', ls='--')
+    text = r'$ \mathrm{Model:}\ \tau=%.3f, \ SF_{\infty}=%.3f \mathrm{days}$'%(popt[0],popt[1])
+    ax3.text(x=1.0, y=0.3,s = text )
+    # quasars
     ax3.scatter(np.log10(qso_plot['mean_tau']), qso_plot['SF'], s=p_size, 
                 alpha=p_al,c = col1)
     ax3.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['SF'], 
@@ -414,8 +638,9 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     ax3.tick_params( axis='x', which='both',  bottom='off', 
                     top='off', labelbottom='off')
     ax3.grid(axis='x')
-    ax3.set_yticks([0,0.1,0.2,0.3,0.4,0.5])
-    ax3.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4', '0.5'])    
+    ax3.set_yticks([0,0.1,0.2,0.3,0.4])
+    ax3.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+    ax3.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)    
     ax3.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax3.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al) 
         
@@ -445,10 +670,10 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
                  
                  
     ax4.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax4.set_ylim(top=0.6, bottom=-0.2)
+    ax4.set_ylim(top=y_mu_top, bottom=y_mu_bott)
     ax4.set_xlim(left=x_left, right=x_right)
-    ax4.set_yticks([-0.1,0,0.1,0.2,0.3,0.4,0.5])
-    ax4.set_yticklabels(['-0.1','0.0','0.1', '0.2', '0.3', '0.4', '0.5'])  
+    ax4.set_yticks([-0.05,0,0.05])
+    ax4.set_yticklabels(['-0.05','0.0', '0.05'])  
     ax4.set_ylabel(r'$\mu_{approx}$', fontsize=20)
     ax4.grid(axis='x')
     ax4.set_xlabel(r'$log_{10} (\Delta _{t})$ [days]',fontsize=20)
@@ -463,7 +688,6 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     # thus I am NOT TAKING np.log10  of x-quantities 
     
     plt.clf()
-    print 'Hello Im here! '
     fig2 = plt.figure(figsize=(12,4))
     ax1 = fig2.add_subplot(111)
     ax1.scatter(qso_plot['mean_tau'], qso_plot['mu_approx'],
@@ -472,10 +696,10 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
                  qso_plot['err_mu_approx'], linestyle='None',c = col1)
                  
     ax1.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax1.set_ylim(top=0.6, bottom=-0.2)
+    ax1.set_ylim(top=y_mu_top, bottom=y_mu_bott)
     #ax1.set_xlim(left=x_left, right=x_right)
-    ax1.set_yticks([-0.1,0,0.1,0.2,0.3,0.4,0.5])
-    ax1.set_yticklabels(['-0.1','0.0','0.1', '0.2', '0.3', '0.4', '0.5'])  
+    ax1.set_yticks([-0.05,0,0.05])
+    ax1.set_yticklabels(['-0.05','0.0','0.05'])  
     ax1.set_ylabel(r'$\mu_{approx}$', fontsize=20)
     ax1.grid(axis='x')
     ax1.set_xlabel(r'$\Delta _{t}$ [days]',fontsize=20)
@@ -483,6 +707,147 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, nbins
     title3 = 'Sigma_del_t_'+choice+'_'+str(nbins)+'_bins_'+str(sample)+'.png'
     plt.savefig(title3)
     plt.show()
+    
+    # Make histograms : plot on one subplot histograms of delflx for stars, qso
+    # on another subplot, make hist of delflxerr for stars, qso 
+    
+    plt.clf()
+    fig3 = plt.figure(figsize=(12,12))
+    
+       
+    
+    
+    # Subplot1 : Delta_Mag  (delflx)
+    ax1  = fig3.add_subplot(221)  # rows, columns, subplot_id
+    # quasars
+    ax1.plot(qso_plot['bin_delflx_cen'],qso_plot['hist_delflx'], ls='steps', 
+                      label='QSO', color='black', lw=lw_h)
+    # blue stars
+    ax1.plot(star_plot['bin_delflx_cen'],star_plot['hist_delflx'], ls='steps',
+             label='Blue *', color='blue',lw=lw_h)
+    
+    # red stars 
+    ax1.plot(star_plot1['bin_delflx_cen'], star_plot1['hist_delflx'], ls='steps',
+             label='Red *', color='red',lw=lw_h)
+    
+    # gaussian  with sigma from sigma_std
+    # Gaussian 
+    bins = qso_plot['bin_delflx_cen']
+    #hist = qso_plot['hist_delflx']
+    st = qso_plot['st']
+    mu = st['mu_mean']
+    sigma = st['sigma_stdev']
+    area = qso_plot['area_delflx']
+    y = area*gaussian(bins,mu, sigma)
+    ax1.plot(bins, y, 'g--', lw=lw_h, label='Gauss QSO')
+ 
+    # add a 'best fit' line
+    #y = mlab.normpdf( qso_plot['bin_delflx_cen'], mu_gauss, sigma_gauss)
+    #l = ax1.plot(bins, y, 'r--', linewidth=2)
+    
+    #ax1.title(r'$\mathrm{Histogram\ of\ IQ:}\ \mu=%.3f,\ \sigma=%.3f$' %(mu_gauss, sigma_gauss))
+    #ax1.grid(True)
+         
+    
+    
+    ax1.set_xlabel(r'$\Delta M$')   
+    ax1.set_ylabel(r'$n_{bin} / N_{sample}$') 
+    #ax1.set_yticklabels([' '])
+    ax1.set_xlim(left=-2, right=2)
+    ax1.legend(framealpha=0.7)
+    
+    # Subplot2 : Delta_Mag_err (delflxerr)
+    #ax2 = fig3.add_subplot(222)
+    # Quasars
+    #ax2.plot(qso_plot['bin_err_cen'], qso_plot['hist_err'], ls='steps', 
+    #                  label='Quasars', color='black', lw=lw_h)
+                                      
+      # blue stars
+    #ax2.plot(star_plot['bin_err_cen'], star_plot['hist_err'], ls='steps',
+    #          label='Blue stars', color='blue',lw=lw_h)
+    
+    # red stars 
+    #ax2.plot(star_plot1['bin_err_cen'], star_plot1['hist_err'], ls='steps',
+    #          label='Red stars', color='red',lw=lw_h)
+    
+   # ax2.set_xlabel(r'$\sigma(\Delta M): err$')   
+    #ax2.set_ylabel(r'$n_{bin} / N_{sample}$') 
+    #ax2.set_xlim(left=-2, right=2)
+    
+    
+    # Subplot 2 : plot Delta_Mag / delflxerr 
+    
+    ax2 = fig3.add_subplot(222)
+    # Quasars
+    ax2.plot(qso_plot['bin_flx_err'], qso_plot['hist_flx_err'], ls='steps', 
+                      label='Quasars', color='black', lw=lw_h)
+                                      
+    # blue stars
+    ax2.plot(star_plot['bin_flx_err'], star_plot['hist_flx_err'], ls='steps',
+             label='Blue stars', color='blue',lw=lw_h)
+    
+    # red stars 
+    ax2.plot(star_plot1['bin_flx_err'], star_plot1['hist_flx_err'], ls='steps',
+             label='Red stars', color='red',lw=lw_h)
+    
+    ax2.set_xlabel(r'$\Delta M /  err(\Delta M)$')   
+    ax2.set_ylabel(r'$n_{bin} / N_{sample}$') 
+    ax2.set_xlim(left=-5, right=5)
+    
+    
+    # Overplot a Gaussian fitted to QSO distribution of delflx / delflxerr
+    bins = qso_plot['bin_flx_err']
+    st = qso_plot['st']
+    mu = st['mu_gauss_2']
+    sigma = st['sigma_gauss_2']
+    area = qso_plot['area_flx_err']
+    y = area*gaussian(bins,mu, sigma)
+    ax2.plot(bins, y, 'g--', lw=lw_h)
+    ax2.legend(framealpha=0.7)
+    
+    # Subplot3 : plot only Quasars and gaussian 
+    ax3 = fig3.add_subplot(223)
+        
+    # quasars
+    ax3.plot(qso_plot['bin_delflx_cen'],qso_plot['hist_delflx'], ls='steps', 
+                      label='Quasars', color='black', lw=lw_h)
+    
+    # Gaussian 
+    bins = qso_plot['bin_delflx_cen']
+    st = qso_plot['st']
+    mu = st['mu_mean']
+    sigma = st['sigma_stdev']
+    area = qso_plot['area_delflx']
+    y = area*gaussian(bins,mu, sigma)
+    #ax3.set_title('Normalized distribution'+r'$  \sigma=%.3f$' %(sigma))
+    ax3.set_xlabel(r'$\Delta M$') 
+    ax3.plot(bins, y, 'b--', lw=lw_h, label ='Gaussian')     
+    ax3.legend(framealpha=0.7)
+    ax3.set_ylabel(r'$n_{bin} / N_{sample}$')
+    ax3.set_xlim(left=-2, right=2)
+    
+    # Subplot 4 : plot the CDF of Quasars and Gaussian CDF 
+    # http://stackoverflow.com/questions/9378420/how-to-plot-cdf-in-matplotlib-in-python
+    
+    ax4 = fig3.add_subplot(224)
+    c_gauss = np.cumsum(y)
+    c_qso = np.cumsum(qso_plot['hist_delflx'])
+    ax4.plot(bins, c_gauss, 'b--', lw=lw_h, label='Gauss')
+    ax4.plot(bins, c_qso, 'black', lw=lw_h, label='QSO')
+    ax4.set_ylabel('CDF')
+    ax4.set_xlabel(r'$\Delta M$') 
+    ax4.legend(loc=4,framealpha=0.7)
+    ax4.set_xlim(left=-2, right=2)
+    
+    fig3.subplots_adjust(wspace=0.3)    
+    
+    title = 'Hist_delflx_'+choice+'_'+str(nbins)+'_bins_'+str(sample)+'.png'     
+    plt.savefig(title)
+    plt.show()
+    
+    
+    
+    return qso_plot
     
 def plot_qso_stats(qso_cat):
     plt.clf()
@@ -512,6 +877,12 @@ def sf_plotting(tau,delflx, delflxerr, master_names , sample ,choice,
                 nbins=100):
     
     '''
+    
+    OLD OLD OLD OLD OLD OLD OLD OLD     
+    
+    Note  : it was used to just plot quasars, now DEPRECEATED and superseded 
+    with  sf_plot_panels , which plots quasars and stars 
+    
     A more complex plotting routine, plotting the binned time difference vs 
     mean del_mag in the bin, as well as rms  on del_mag within the bin, 
     calculated in two ways:   
@@ -632,6 +1003,7 @@ def sf_plotting(tau,delflx, delflxerr, master_names , sample ,choice,
     ax1.set_xlim(left=x_left, right=x_right)
     ax1.set_yticks([0,0.1,0.2,0.3,0.4,0.5])
     ax1.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4', '0.5'])
+    ax1.axhline(y=0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax1.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax1.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax1.grid(axis='x')
@@ -652,6 +1024,7 @@ def sf_plotting(tau,delflx, delflxerr, master_names , sample ,choice,
                     top='off', labelbottom='off') 
     ax2.set_yticks([0,0.1,0.2,0.3,0.4,0.5])
     ax2.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4', '0.5'])
+    ax2.axhline(y=0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax2.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
     ax2.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
     ax2.grid(axis='x')
@@ -674,7 +1047,8 @@ def sf_plotting(tau,delflx, delflxerr, master_names , sample ,choice,
                     top='off', labelbottom='off')
     ax3.grid(axis='x')
     ax3.set_yticks([0,0.1,0.2,0.3,0.4,0.5])
-    ax3.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4', '0.5'])    
+    ax3.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4', '0.5']) 
+    ax3.axhline(y=0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax3.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
     ax3.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al) 
         
@@ -715,7 +1089,7 @@ def plot_single_SF(inDir,  choice, good_ids):
     err    = np.empty(0,dtype=float)
     master_acc_list = np.empty(0, dtype=str)
         
-    for i in range(len(masterFiles)): # len(masterFiles)
+    for i in range(3): # len(masterFiles)
         master = np.genfromtxt(inDir+masterFiles[i], dtype=str)
         master_names = master[:,3]
         unique_names = np.unique(master_names)
@@ -794,14 +1168,13 @@ def add_tau_delflx(masterFiles, inDir, good_ids, i, data):
     return delflx, tau, err, master_acc_list
     
 def plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                 good_ids_QSO):
+                 good_ids_QSO, choice, nbins=200, bins_hist=50, err_factor=1.0):
     inDir_S       = inDirStars
     good_ids_S_blue    = good_ids_S_blue
     good_ids_S_red    = good_ids_S_red
     inDir_Q       = inDirQSO
     good_ids_Q    = good_ids_QSO
     
-    nbins = 200 
     
     # Read the Stellar Master file names 
     masterFiles_S = os.listdir(inDir_S)
@@ -825,7 +1198,7 @@ def plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
     star_data_red  = [delflx_S, tau_S, err_S, master_acc_list_S]
     qso_data = [delflx_Q, tau_Q, err_Q, master_acc_list_Q]    
     
-    for i in range(len(masterFiles_Q)): # 
+    for i in range(1): # len(masterFiles_Q)
         #delflx_Q, tau_Q, err_Q, master_acc_list_Q
         qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
                                   qso_data)
@@ -837,23 +1210,144 @@ def plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                                    star_data_red)                            
                                    
         out = sf_plot_panels(qso_data, star_data_blue, star_data_red,  i, 
-                             'both', nbins)
-    return out
+                             choice, nbins, bins_hist, err_factor)
+    return out, qso_data
     
 inDirStars   = 'sf_TRY/sf_stars/'
 inDirQSO = 'sf_TRY/sf_qso/'
 
 
-# Plotting stars and quasars on one plot .... 
 
-good_ids_S_blue  = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = -1, gi_Max=1)
-good_ids_S_red = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = 1, gi_Max=3)
-good_ids_QSO = cut_qso()
+# Experiment on how different CRTS errors affect SF of both quasars and stars 
+# A step forward from plotting just quasars (as below)
 
-out = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO)
+# Require  Merr < 0.2 mag for quasars and stars ( big error) : same as was done 
+# before 
 
+good_ids_S_blue  = cut_stars(mMax=20, mErrMax = 0.2, gi_Min = -1, gi_Max=1)
+good_ids_S_red = cut_stars(mMax=20, mErrMax = 0.2, gi_Min = 1, gi_Max=3)
+good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.2 , mMax = 20)
+
+out, qso = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO, choice='1.0Eboth0.2', nbins=200, bins_hist=100,
+                  err_factor=1.0)
+                  
+
+# CHECK CHECK CHECK 
+def do_err_check(good_ids_Q =  good_ids_QSO, inDir_Q =inDirQSO ):
+    
+    # plot the histogram of the entry catalog filtered by good ids     
+    
+    
+    # plot the histogram of the filtered out master files... 
+    
+    masterFiles_Q = os.listdir(inDir_Q)
+    
+    delflx_Q      = np.empty(0,dtype=float)
+    tau_Q         = np.empty(0,dtype=float)
+    err_Q         = np.empty(0,dtype=float)
+    master_acc_list_Q = np.empty(0, dtype=str)
+    qso_data =  [delflx_Q, tau_Q, err_Q, master_acc_list_Q]
+    
+    i = 0
+    
+    qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
+                                  qso_data)
+    return qso_data
+    
+#qso_input = do_err_check()
+
+
+def do_check(out,qso):
+    delflx= qso[0]
+    tau=qso[1]
+    delflxerr=qso[1]
+    
+    mask = np.log10(tau) < 1.7
+    
+    tau = tau[mask]
+    delflx = delflx[mask]
+    delflxerr = delflxerr[mask]
+   
+    
+    st = gauss_stats(tau, delflx, delflxerr)
+
+    fig = plt.figure(figsize=(6,6))    
+    ax1 = fig.add_subplot(111)
+ 
+    hist = out['hist_delflx']
+    bins = out['bin_delflx_cen']
+    area = out['area_delflx']
+    
+    ax1.plot(bins, hist, ls='steps', label='Quasars', color='black', lw=2)
+    y = area * gaussian(bins, st['mu_gauss'], st['sigma_gauss'])
+    ax1.plot(bins, y, 'r--', lw=2)
+    
+    ax1.grid(True)
+    ax1.set_xlabel(r'$\Delta M$')
+    ax1.set_ylabel(r'$n_{bin} / N_{sample}$')
+    ax1.set_title(r'$  \sigma=%.3f$' %( st['sigma_gauss']))
+    ax1.grid(True)
+    
+    # The CDF 
+    fig2 = plt.figure(figsize=(6,6))    
+    ax2 = fig2.add_subplot(111)    
+    
+    #dx = (max(bins)-min(bins)) / float(len(bins))
+    cy = np.cumsum(y)
+    cy_hist = np.cumsum(hist)
+    ax2.plot(bins, cy, 'b', label='gauss', lw=2)
+    ax2.plot(bins, cy_hist, 'r', label='qso', lw=2)
+    ax2.legend()
+    # another check : from 
+    #    http://stackoverflow.com/questions/23251759/how-to-determine-what-is-the-probability-distribution-function-from-a-numpy-arra
+    
+    fig3 = plt.figure(figsize=(6,6))    
+    ax2 = fig3.add_subplot(111)    
+    
+    n, bins, patches = ax2.hist(delflx, 100, normed=1)
+    mu = np.mean(delflx)
+    sigma = np.std(delflx)
+    ax2.plot(bins, mlab.normpdf(bins, mu, sigma))
+    ax2.set_xlabel(r'$\Delta M$')
+    plt.show()
+    
+    plt.clf()
+    
+    fig = plt.figure(figsize=(12,6))
+    ax1 = fig.add_subplot(111)
+    x = out['mean_tau']
+    sf = out['SF']
+    plt.scatter(np.log10(x), sf)         
+    plt.plot(np.log10(x), model_sf(x, sf_inf=0.25, tau=365))
+    plt.show()
+    return st, hist, bins
+
+
+#st, hist, bins = do_check(out,qso)                  
+                  
+# Require  Merr < 0.1 mag for quasars and stars (medium error)
+#
+#good_ids_S_blue  = cut_stars(mMax=20, mErrMax = 0.1, gi_Min = -1, gi_Max=1)
+#good_ids_S_red = cut_stars(mMax=20, mErrMax = 0.1, gi_Min = 1, gi_Max=3)
+#good_ids_QSO = cut_qso(mErrMax = 0.1 , mMax = 20)
+#
+#out = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+#                  good_ids_QSO, choice='both0.1')
+                  
+# Require  Merr < 0.05 mag for quasars and stars (small error)
+
+#good_ids_S_blue  = cut_stars(mMax=20, mErrMax = 0.05, gi_Min = -1, gi_Max=1)
+#good_ids_S_red = cut_stars(mMax=20, mErrMax = 0.05, gi_Min = 1, gi_Max=3)
+#good_ids_QSO = cut_qso(mErrMax = 0.05 , mMax = 20) 
+#
+#out = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+#                  good_ids_QSO, choice='both0.05')
+
+# Plot statistics on quasars : simple one-function routine 
 #plot_qso_stats(qso_cat)
+
+# Experiment on how CRTS error affects the SF, but here it's only for quasars  
 
 # Plot smallest error Quasars  : Merr < 0.05 mag 
 #good_ids = cut_qso(mErrMax = 0.05 , mMax = 20)  
