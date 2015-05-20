@@ -56,8 +56,6 @@ def get_qso_catalog():
     for i in range(len(qso_names)):
         qso_names[i] = qso_names[i][4:-4]
     print 'Read in ', len(qso_catalog['redshift']), ', quasars from CRTS'
-    
-    
     return  colnames, qso_catalog, qso_names
     
 def get_stars_catalog():
@@ -647,6 +645,11 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     '''               
     # Pass on the parameters used in calculating mu, sigma, for all points 
     # across the entire tau range 
+    qso_plot=[]   
+    'Returning ...' 
+    
+    return qso_plot
+    
     mu_sig_generic={}   
     colnames = ['y_34', 'approx']
     datatable = [y_34, approx]
@@ -693,7 +696,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     
     mu_sig_sample={}
     colnames = ['bins_hist', 'hist_xlim', 'mu_s', 'sig_s','mu_lim', 'sig_lim']
-    datatable = [bins_hist, [-1.0,1.0], 2*40, 2*100, [-0.01,0.01 ], [0.0, 0.10]]
+    datatable = [bins_hist, [-1.0,1.0], 2*40, 2*100, [-0.005,0.005 ], [0.02, 0.05]]
     for label, column in zip(colnames, datatable):
         mu_sig_sample[label] = column 
         
@@ -702,7 +705,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     ##############################################
     
     star_plot1 = get_plotted_quantities(star_data_red, nbins, mu_sig_sample, mu_sig_generic, err_factor)
-    return star_plot1
+    #return star_plot1
     
     # ####################################
     # Plot  the standard deviation  vs tau 
@@ -966,7 +969,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
                      label='err0')    
     ax1.set_xlabel(r'$\Delta m$')   
     ax1.set_ylabel(r'$n_{bin} / (N * \Delta_{bin})$') 
-    ax1.set_xlim(left=-2, right=2)
+    ax1.set_xlim(left=-1.5, right=1.5)
     ax1.legend(framealpha=0.7)
     
     # Subplot2 : Delta_Mag  (delflx) : quasars and model(err3)
@@ -979,7 +982,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
                      label='1.3*err0')    
     ax2.set_xlabel(r'$\Delta m$')   
     ax2.set_ylabel(r'$n_{bin} / (N * \Delta_{bin})$') 
-    ax2.set_xlim(left=-2, right=2)
+    ax2.set_xlim(left=-1.5, right=1.5)
     ax2.legend(framealpha=0.7) 
     
     # Subplot3: Blue stars, with two error models 
@@ -992,7 +995,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
              label='1.3*err0')
     ax3.set_xlabel(r'$\Delta m$')   
     ax3.set_ylabel(r'$n_{bin} / (N * \Delta_{bin})$') 
-    ax3.set_xlim(left=-2, right=2)
+    ax3.set_xlim(left=-1, right=1)
     ax3.legend(framealpha=0.7)
     
     # Subplot4: Red stars, with two error models 
@@ -1007,7 +1010,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
              
     ax4.set_xlabel(r'$\Delta m$')   
     ax4.set_ylabel(r'$n_{bin} / (N * \Delta_{bin})$') 
-    ax4.set_xlim(left=-2, right=2)
+    ax4.set_xlim(left=-1, right=1)
     ax4.legend(framealpha=0.7)
     
     
@@ -1115,7 +1118,7 @@ def plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
     star_data_red  = [delflx_S, tau_S, err_S, master_acc_list_S]
     qso_data = [delflx_Q, tau_Q, err_Q, master_acc_list_Q]    
     
-    for i in range(1): # len(masterFiles_Q)
+    for i in range(len(masterFiles_Q)): # len(masterFiles_Q)
         #delflx_Q, tau_Q, err_Q, master_acc_list_Q
         qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
                                   qso_data)
@@ -1128,7 +1131,8 @@ def plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                                    
         out = sf_plot_panels(qso_data, star_data_blue, star_data_red,  i, 
                              choice, nbins, bins_hist, err_factor, approx, y_34)
-    return out, star_data_blue
+    
+    return out, qso_data, star_data_blue, star_data_red
     
 inDirStars   = 'sf_TRY/sf_stars/'
 inDirQSO = 'sf_TRY/sf_qso/'
@@ -1141,14 +1145,15 @@ inDirQSO = 'sf_TRY/sf_qso/'
 # Require  Merr < 0.2 mag for quasars and stars ( big error) : same as was done 
 # before 
 
-good_ids_S_blue  = cut_stars(mMax=20, mErrMax = 0.2, gi_Min = -1, gi_Max=1)
-good_ids_S_red = cut_stars(mMax=20, mErrMax = 0.2, gi_Min = 1, gi_Max=3)
-good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.2 , mMax = 20)
+good_ids_S_blue  = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = -1, gi_Max=1)
+good_ids_S_red = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = 1, gi_Max=3)
+good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.2 , mMax = 19)
 
-out, qso = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+out, qso, star_b, star_r = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                   good_ids_QSO, choice='1.0Eboth0.2', nbins=200, bins_hist=200,
-                  err_factor=1.0, approx=False, y_34 = 'mode')
-           
+                  err_factor=1.0, approx=True, y_34 = 'mode')
+ 
+          
 #
 #
 #
@@ -1168,6 +1173,273 @@ out, qso = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
 # ----------------------------------------------------------------
 # ---------------------------------------------------------------- 
 #           
+
+def get_magnitudes(good_ids_QSO=good_ids_QSO, good_ids_S_red=good_ids_S_red,
+                   good_ids_S_blue = good_ids_S_blue, qso_cat = qso_cat, 
+                   star_cat=star_cat, qso=qso, star_b = star_b, star_r = star_r,
+                   qso_names=qso_names,pre='Sample_1_'):
+    
+    # get MAGNITUDES for QSO  
+    delflx = qso[0]
+    tau = qso[1]
+    name = qso[3]
+    
+    hist_xlim=[-1.5,1.5]
+    mask_tau =np.log10(tau)<1.7
+    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+    mask = mask_tau * mask_delflx
+
+    names_pre = np.unique(name[mask])    
+    print '\nFor QSO, we have ', len(names_pre), 'names in the Sample'
+    print 'While in the overall sample, there are', len(good_ids_QSO), 'names'
+    
+    mask_good = np.in1d(qso_names, good_ids_QSO) * np.in1d(qso_names, names_pre)
+    acc_qso_names = qso_names[mask_good]
+    print 'The overlap of those two sets are ', len(acc_qso_names), 'names'
+
+    acc_mags_SDSS = qso_cat['M_i'][mask_good]
+    acc_mags_CRTS = qso_cat['CRTS_avg_m'][mask_good]
+    
+    DATA = np.column_stack((acc_qso_names, acc_mags_SDSS, acc_mags_CRTS))
+    outfile = pre+'QSO_'+str(len(acc_mags_SDSS))+'_objects'   
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    print 'Saving names, and mags to  to ...', outfile 
+    
+    print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
+    print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
+    print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
+    print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
+    
+    star_names = star_cat['crts_id']
+    
+    # get MAGNITUDES for STARS BLUE 
+    
+     
+    delflx = star_b[0]
+    tau = star_b[1]
+    name = star_b[3].astype(float)
+    
+    hist_xlim=[-1,1]
+    mask_tau =np.log10(tau)<1.7
+    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+    mask = mask_tau * mask_delflx
+
+    names_pre = np.unique(name[mask]) 
+    good_ids = good_ids_S_blue.astype(float)
+    mask_good = np.in1d(star_names, good_ids)* np.in1d(star_names, names_pre)
+    acc_star_names = star_names[mask_good]
+    
+    acc_mags_SDSS = star_cat['g_mMed'][mask_good]
+    acc_mags_CRTS = star_cat['CRTS_M'][mask_good]
+    print '\nFor Blue Stars, we have ', len(names_pre), 'names in the Sample'
+    print 'While in the overall sample, there are', len(good_ids_S_blue), 'names'
+    print 'The overlap of those two sets are ', len(acc_star_names), 'names'
+
+   
+    DATA = np.column_stack((acc_star_names, acc_mags_SDSS, acc_mags_CRTS))
+    outfile = pre+'Stars_blue_'+str(len(acc_mags_SDSS))+'_objects'   
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    print 'Saving names, and mags  to ...', outfile 
+    
+    print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
+    print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
+    print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
+    print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
+
+    # get MAGNITUDES for STARS RED 
+    
+    delflx = star_r[0]
+    tau = star_r[1]
+    name = star_r[3].astype(float)
+    
+    hist_xlim=[-1,1]
+    mask_tau =np.log10(tau)<1.7
+    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+    mask = mask_tau * mask_delflx
+
+    names_pre = np.unique(name[mask]) 
+    good_ids = good_ids_S_red.astype(float)
+    mask_good = np.in1d(star_names, good_ids)* np.in1d(star_names, names_pre)
+    acc_star_names = star_names[mask_good]
+    
+    acc_mags_SDSS = star_cat['g_mMed'][mask_good]
+    acc_mags_CRTS = star_cat['CRTS_M'][mask_good]
+    
+    print '\nFor Red Stars, we have ', len(names_pre), 'names in the Sample'
+    print 'While in the overall sample, there are', len(good_ids_S_red), 'names'
+    print 'The overlap of those two sets are ', len(acc_star_names), 'names'
+
+
+    DATA = np.column_stack((acc_star_names, acc_mags_SDSS, acc_mags_CRTS))
+    outfile = pre+'Stars_red_'+str(len(acc_mags_SDSS))+'_objects'   
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    print 'Saving names, and mags  to ...', outfile 
+    
+    print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
+    print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
+    print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
+    print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
+    
+       
+    
+get_magnitudes()    
+    
+def pickle_sample(qso=qso, star_b = star_b, star_r = star_r, pre='Sample_1_'):
+    '''
+    Save the data in the sample log(tau) < 1.7 , and delflx within 
+    histogram limits (for QSO, -1.5 : 1.5,   for stars -1 : 1), 
+    save to a text file, and to an npz file (which may be easier to 
+    read in later )
+    '''    
+
+    # QSO DATA SAVE 
+    delflx = qso[0]
+    tau = qso[1]
+    delflxerr = qso[2]
+    name = qso[3]
+    
+    DATA = np.column_stack((delflx,tau,delflxerr, name))
+    outfile = 'QSO_'+str(len(delflx))+'_lines'   
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    #np.savez(outfile+'.npz', delflx=delflx,tau=tau,delflxerr=delflxerr, name=name)
+    print 'Saving all to ...', outfile 
+    
+    # DEFINE THE SAMPLE (FOR QSO... )
+    hist_xlim=[-1.5,1.5]
+    mask_tau =np.log10(tau)<1.7
+    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+    mask = mask_tau * mask_delflx
+    delflx_sm = delflx[mask]
+    delflxerr_sm = delflxerr[mask]
+    xi = delflx_sm
+    ei = delflxerr_sm
+    ni = name[mask]
+    
+    # SAVE TO FILE .... 
+    DATA = np.column_stack((xi,ei,ni))    
+    outfile = pre+'QSO_'+str(len(xi))+'_lines'
+    print 'Saving the sample to ...', outfile 
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
+    
+    # BLUE STARS DATA SAVE 
+    
+    delflx = star_b[0]
+    tau = star_b[1]
+    delflxerr = star_b[2]
+    name = star_b[3]
+    
+    DATA = np.column_stack((delflx,tau,delflxerr, name))
+    outfile = 'Stars_blue_'+str(len(delflx))+'_lines'  
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    print 'Saving all to ...', outfile 
+     
+    # DEFINE THE SAMPLE (FOR QSO... )
+    hist_xlim=[-1,1]
+    mask_tau =np.log10(tau)<1.7
+    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+    mask = mask_tau * mask_delflx
+    delflx_sm = delflx[mask]
+    delflxerr_sm = delflxerr[mask]
+    xi = delflx_sm
+    ei = delflxerr_sm
+    ni = name[mask]
+    
+    # SAVE TO FILE .... 
+    DATA = np.column_stack((xi,ei,ni))    
+    outfile = pre+'Stars_blue_'+str(len(xi))+'_lines'
+    
+    print 'Saving the sample to ...', outfile 
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
+    
+    # RED STARS DATA SAVE 
+    
+    delflx = star_r[0]
+    tau = star_r[1]
+    delflxerr = star_r[2]
+    name = star_r[3]
+    
+    DATA = np.column_stack((delflx,tau,delflxerr, name))
+    outfile = 'Stars_red_'+str(len(delflx))+'_lines'   
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    print 'Saving all to ...', outfile
+    # DEFINE THE SAMPLE (FOR QSO... )
+    hist_xlim=[-1,1]
+    mask_tau =np.log10(tau)<1.7
+    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+    mask = mask_tau * mask_delflx
+    delflx_sm = delflx[mask]
+    delflxerr_sm = delflxerr[mask]
+    xi = delflx_sm
+    ei = delflxerr_sm
+    ni = name[mask]
+    
+    # SAVE TO FILE .... 
+    DATA = np.column_stack((xi,ei,ni))    
+    outfile = pre+'Stars_red_'+str(len(xi))+'_lines'
+    print 'Saving the sample to ...', outfile 
+     
+    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+    #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
+    
+    return  xi, ei
+    
+ah = pickle_sample()   
+    
+def p_distr_quick(qso=qso):
+    
+    delflx = qso[0]
+    tau = qso[1]
+    delflxerr = qso[2]
+    name = qso[3]
+    
+    
+    # DEFINE THE SAMPLE (FOR QSO... )
+    hist_xlim=[-1.5,1.5]
+    mask_tau =np.log10(tau)<1.7
+    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+    mask = mask_tau * mask_delflx
+    delflx_sm = delflx[mask]
+    delflxerr_sm = delflxerr[mask]
+    xi = delflx_sm
+    ei = delflxerr_sm
+    ni = name[mask]
+    
+    # SAVE TO FILE .... 
+    DATA = np.column_stack((xi,ei,ni))    
+    outfile = 'Sample_QSO_'+str(len(xi))+'_lines.txt'
+    print 'Saving all to ...', outfile 
+    np.savetxt(outfile, DATA, delimiter =' ', fmt="%s")
+    
+    
+    return xi, ei
+    # EXACT WAY  : increase sampling....
+    
+    mu_s = 40
+    sig_s = 100
+    
+    # Calculate in three ways...  mode     
+    sig_lim = [0.17, 0.22] ;  mu_lim = [-0.007,0.007 ]
+    sig_ex= [] ;  mu_ex=[]
+    #return xi, ei, p_mu, p_sigma
+    mu_exact, sigma_exact, p_mu, p_sigma = get_sigma_mu(xi,ei, approx=False, 
+                                 y_34='mode', return_p=True, sig_s=sig_s, mu_s=mu_s,
+                                 sig_lim = sig_lim, mu_lim = mu_lim)
+                                 
+    sig_ex.append(sigma_exact); mu_ex.append(mu_exact)                                    
+    print 'For log(tau) < 1.7, mode : exact sigma= ', sigma_exact  , ' mu=', mu_exact
+    
+    
+    mu, sigma =  get_sigma_mu(xi,ei, approx=False,  return_sigma=True, 
+                              sig_s=sig_s, mu_s=mu_s,
+                              sig_lim=sig_lim, mu_lim=mu_lim)
+ 
+ 
+ 
+    return xi, ei, mu, p_mu, sigma, p_sigma
+
+#ble = p_distr_quick()    
     
 def p_distributions_sample(out=out, qso=qso):
     
@@ -1253,6 +1525,7 @@ def p_distributions_sample(out=out, qso=qso):
     ax1.text(sig_ex[0]+0.005, 300, '$\sigma_{1}=%.5f$' % sig_ex[0])
     ax1.text(sig_ex[0]+0.005, 250, '$\sigma_{2}=%.5f$' % sig_ex[1])
     ax1.text(sig_ex[0]+0.005, 200, '$\sigma_{3}=%.5f$' % sig_ex[2])
+    ax1.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     #ax1.set_xlim(xmin=0.15 , xmax=0.25)
     
     
@@ -1276,7 +1549,8 @@ def p_distributions_sample(out=out, qso=qso):
     
     return sigma, p_sigma, mu, p_mu, sig_ex, mu_ex
     
-aaa = p_distributions_sample(out=out, qso=qso)
+
+#aaa = p_distributions_sample(out=out, qso=qso)
 
 
 def combined_gaussian(out=out, qso=qso, err_factor=1.3, hist_xlim=[-1.5,1.5]):
