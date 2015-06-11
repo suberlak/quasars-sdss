@@ -43,12 +43,15 @@ rcParams.update({'figure.autolayout': True})
 # Load catalogs : output of sf_CRTS_SDSS_matching_NEW.py 
 # This part takes only a second to run 
 
-def get_qso_catalog():
-    File = 'CRTS_SDSS_cross_matched_qso_catalog.txt'
+def get_qso_catalog(catalog):
+    if catalog == 's82drw':
+        File = 'CRTS_SDSS_cross_matched_qso_s82drw_catalog.txt'
+    if catalog == 'DB_QSO':
+        File = 'CRTS_SDSS_cross_matched_qso_DB_QSO_catalog.txt'
     colnames = open(File,'r').read().splitlines()[0][1:].split()
     datatable = np.genfromtxt(File)
     qso_catalog = {}
-    print 'Zipping CRTS-SDSS quasars catalog...'
+    print 'Zipping CRTS-SDSS quasars catalog from ', File, ' ...'
     for label, column in zip(colnames, datatable.T):
         qso_catalog[label] = column
     
@@ -69,27 +72,26 @@ def get_stars_catalog():
         
     return  colnames, stars_catalog
 
-cols1, qso_cat, qso_names = get_qso_catalog() 
+cols1, qso_cat, qso_names = get_qso_catalog(catalog='DB_QSO') 
 cols2 , star_cat= get_stars_catalog()
 
 
 # Perform cuts 
 def cut_qso(qso_cat=qso_cat, qso_names=qso_names, mMin=-9, mMax=19, 
-            mErrMin = -9, mErrMax = 0.2, zMin = 0, zMax=2 ):
+            mErrMin = -9, mErrMax = 0.3):
 
-    mask_mag = (qso_cat['CRTS_avg_m'] > mMin) * (qso_cat['CRTS_avg_m'] < mMax) 
+    mask_mag = (qso_cat['r'] > mMin) * (qso_cat['r'] < mMax) 
     mask_err = (qso_cat['CRTS_avg_e'] > mErrMin) * (qso_cat['CRTS_avg_e'] < mErrMax)
-    mask_z = (qso_cat['redshift'] > zMin ) * (qso_cat['redshift']<zMax)
-    mask = mask_mag * mask_err * mask_z
+    mask = mask_mag * mask_err 
     qso_id = qso_names[mask]
     print '\n These cuts reduced the number of qso  in the sample from', \
           len(qso_cat['redshift']), ' to ', len(qso_id)
     return  qso_id, mask 
 
 def cut_stars(star_cat=star_cat, mMin=-9, mMax=19, mErrMin = -9, 
-              mErrMax = 0.2, gi_Min = -1, gi_Max=1  ):
+              mErrMax = 0.3, gi_Min = -1, gi_Max=1  ):
 
-    mask_mag = (star_cat['CRTS_M'] > mMin) * (star_cat['CRTS_M'] < mMax) 
+    mask_mag = (star_cat['r_mMed'] > mMin) * (star_cat['r_mMed'] < mMax) 
     mask_err = (star_cat['CRTS_Merr'] > mErrMin) * (star_cat['CRTS_Merr'] < mErrMax)
     SDSS_gi = star_cat['g_mMed'] - star_cat['i_mMed']
     mask_color = (SDSS_gi > gi_Min ) * (SDSS_gi < gi_Max)
@@ -1076,7 +1078,7 @@ def add_tau_delflx(masterFiles, inDir, good_ids, i, data):
     # accepted stars / quasars from the master files:
     master_acc = master_names[master_mask]
     print '\n We accepted', len(master_acc), ' out of ', len(master_names),\
-    ' rows of master file', i
+    ' rows of master file', i, masterFiles[i]
     
     # read in tau,  del_mag,  del_mag_err for quasars on the list 
     delflx = np.append(delflx, master[:,0][master_mask].astype(float))
@@ -1137,23 +1139,21 @@ def plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
 inDirStars   = 'sf_TRY/sf_stars/'
 inDirQSO = 'sf_TRY/sf_qso/'
 
-
-
 # Experiment on how different CRTS errors affect SF of both quasars and stars 
 # A step forward from plotting just quasars (as below)
 
 # Require  Merr < 0.2 mag for quasars and stars ( big error) : same as was done 
 # before 
 
-good_ids_S_blue  = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = -1, gi_Max=1)
-good_ids_S_red = cut_stars(mMax=19, mErrMax = 0.2, gi_Min = 1, gi_Max=3)
-good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.2 , mMax = 19)
+good_ids_S_blue  = cut_stars(mMax=20, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+good_ids_S_red = cut_stars(mMax=20, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.3 , mMax = 20)
 
 out, qso, star_b, star_r = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, choice='1.0Eboth0.2', nbins=200, bins_hist=200,
+                  good_ids_QSO, choice='1.0Eboth0.3', nbins=200, bins_hist=200,
                   err_factor=1.0, approx=True, y_34 = 'mode')
  
-          
+pre = 'Sample_6'          
 #
 #
 #
@@ -1177,212 +1177,296 @@ out, qso, star_b, star_r = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_
 def get_magnitudes(good_ids_QSO=good_ids_QSO, good_ids_S_red=good_ids_S_red,
                    good_ids_S_blue = good_ids_S_blue, qso_cat = qso_cat, 
                    star_cat=star_cat, qso=qso, star_b = star_b, star_r = star_r,
-                   qso_names=qso_names,pre='Sample_1_'):
+                   qso_names=qso_names,pre=pre):
     
-    # get MAGNITUDES for QSO  
-    delflx = qso[0]
-    tau = qso[1]
-    name = qso[3]
+    do_qso = 'no'
+    do_S_blue ='yes'
+    do_S_red ='yes'
     
-    hist_xlim=[-1.5,1.5]
-    mask_tau =np.log10(tau)<1.7
-    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
-    mask = mask_tau * mask_delflx
-
-    names_pre = np.unique(name[mask])    
-    print '\nFor QSO, we have ', len(names_pre), 'names in the Sample'
-    print 'While in the overall sample, there are', len(good_ids_QSO), 'names'
+    if do_qso == 'yes':
+        # get MAGNITUDES for QSO  
+        delflx = qso[0]
+        tau = qso[1]
+        name = qso[3]
+        
+        hist_xlim=[-1.5,1.5]
+        mask_tau =np.log10(tau)<1.7
+        mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+        mask = mask_tau * mask_delflx
     
-    mask_good = np.in1d(qso_names, good_ids_QSO) * np.in1d(qso_names, names_pre)
-    acc_qso_names = qso_names[mask_good]
-    print 'The overlap of those two sets are ', len(acc_qso_names), 'names'
-
-    acc_mags_SDSS = qso_cat['M_i'][mask_good]
-    acc_mags_CRTS = qso_cat['CRTS_avg_m'][mask_good]
+        names_pre = np.unique(name[mask])    
+        print '\nFor QSO, we have ', len(names_pre), 'names in the Sample'
+        print 'While in the overall sample, there are', len(good_ids_QSO), 'names'
+        
+        mask_good = np.in1d(qso_names, good_ids_QSO) * np.in1d(qso_names, names_pre)
+        acc_qso_names = qso_names[mask_good]
+        print 'The overlap of those two sets are ', len(acc_qso_names), 'names'
     
-    DATA = np.column_stack((acc_qso_names, acc_mags_SDSS, acc_mags_CRTS))
-    outfile = pre+'QSO_'+str(len(acc_mags_SDSS))+'_objects'   
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    print 'Saving names, and mags to  to ...', outfile 
-    
-    print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
-    print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
-    print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
-    print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
+        acc_mags_SDSS = qso_cat['g'][mask_good]
+        acc_mags_CRTS = qso_cat['CRTS_avg_m'][mask_good]
+        
+        DATA = np.column_stack((acc_qso_names, acc_mags_SDSS, acc_mags_CRTS))
+        outfile = pre+'QSO_'+str(len(acc_mags_SDSS))+'_objects'   
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+        print 'Saving names, and mags to  to ...', outfile 
+        
+        print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
+        print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
+        print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
+        print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
     
     star_names = star_cat['crts_id']
     
     # get MAGNITUDES for STARS BLUE 
     
-     
-    delflx = star_b[0]
-    tau = star_b[1]
-    name = star_b[3].astype(float)
+    if do_S_blue == 'yes':
+        delflx = star_b[0]
+        tau = star_b[1]
+        name = star_b[3].astype(float)
+        
+        hist_xlim=[-1,1]
+        mask_tau =np.log10(tau)<1.7
+        mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+        mask = mask_tau * mask_delflx
     
-    hist_xlim=[-1,1]
-    mask_tau =np.log10(tau)<1.7
-    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
-    mask = mask_tau * mask_delflx
-
-    names_pre = np.unique(name[mask]) 
-    good_ids = good_ids_S_blue.astype(float)
-    mask_good = np.in1d(star_names, good_ids)* np.in1d(star_names, names_pre)
-    acc_star_names = star_names[mask_good]
+        names_pre = np.unique(name[mask]) 
+        good_ids = good_ids_S_blue.astype(float)
+        mask_good = np.in1d(star_names, good_ids)* np.in1d(star_names, names_pre)
+        acc_star_names = star_names[mask_good]
+        
+        acc_mags_SDSS = star_cat['r_mMed'][mask_good]
+        acc_mags_CRTS = star_cat['CRTS_M'][mask_good]
+        print '\nFor Blue Stars, we have ', len(names_pre), 'names in the Sample'
+        print 'While in the overall sample, there are', len(good_ids_S_blue), 'names'
+        print 'The overlap of those two sets are ', len(acc_star_names), 'names'
     
-    acc_mags_SDSS = star_cat['g_mMed'][mask_good]
-    acc_mags_CRTS = star_cat['CRTS_M'][mask_good]
-    print '\nFor Blue Stars, we have ', len(names_pre), 'names in the Sample'
-    print 'While in the overall sample, there are', len(good_ids_S_blue), 'names'
-    print 'The overlap of those two sets are ', len(acc_star_names), 'names'
-
-   
-    DATA = np.column_stack((acc_star_names, acc_mags_SDSS, acc_mags_CRTS))
-    outfile = pre+'Stars_blue_'+str(len(acc_mags_SDSS))+'_objects'   
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    print 'Saving names, and mags  to ...', outfile 
-    
-    print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
-    print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
-    print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
-    print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
+       
+        DATA = np.column_stack((acc_star_names, acc_mags_SDSS, acc_mags_CRTS))
+        outfile = pre+'Stars_blue_'+str(len(acc_mags_SDSS))+'_objects'   
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+        print 'Saving names, and mags  to ...', outfile 
+        
+        print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
+        print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
+        print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
+        print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
 
     # get MAGNITUDES for STARS RED 
     
-    delflx = star_r[0]
-    tau = star_r[1]
-    name = star_r[3].astype(float)
+    if do_S_red == 'yes' :
+        delflx = star_r[0]
+        tau = star_r[1]
+        name = star_r[3].astype(float)
+        
+        hist_xlim=[-1,1]
+        mask_tau =np.log10(tau)<1.7
+        mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+        mask = mask_tau * mask_delflx
     
-    hist_xlim=[-1,1]
-    mask_tau =np.log10(tau)<1.7
-    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
-    mask = mask_tau * mask_delflx
-
-    names_pre = np.unique(name[mask]) 
-    good_ids = good_ids_S_red.astype(float)
-    mask_good = np.in1d(star_names, good_ids)* np.in1d(star_names, names_pre)
-    acc_star_names = star_names[mask_good]
+        names_pre = np.unique(name[mask]) 
+        good_ids = good_ids_S_red.astype(float)
+        mask_good = np.in1d(star_names, good_ids)* np.in1d(star_names, names_pre)
+        acc_star_names = star_names[mask_good]
+        
+        acc_mags_SDSS = star_cat['g_mMed'][mask_good]
+        acc_mags_CRTS = star_cat['CRTS_M'][mask_good]
+        
+        print '\nFor Red Stars, we have ', len(names_pre), 'names in the Sample'
+        print 'While in the overall sample, there are', len(good_ids_S_red), 'names'
+        print 'The overlap of those two sets are ', len(acc_star_names), 'names'
     
-    acc_mags_SDSS = star_cat['g_mMed'][mask_good]
-    acc_mags_CRTS = star_cat['CRTS_M'][mask_good]
     
-    print '\nFor Red Stars, we have ', len(names_pre), 'names in the Sample'
-    print 'While in the overall sample, there are', len(good_ids_S_red), 'names'
-    print 'The overlap of those two sets are ', len(acc_star_names), 'names'
-
-
-    DATA = np.column_stack((acc_star_names, acc_mags_SDSS, acc_mags_CRTS))
-    outfile = pre+'Stars_red_'+str(len(acc_mags_SDSS))+'_objects'   
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    print 'Saving names, and mags  to ...', outfile 
-    
-    print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
-    print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
-    print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
-    print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
-    
+        DATA = np.column_stack((acc_star_names, acc_mags_SDSS, acc_mags_CRTS))
+        outfile = pre+'Stars_red_'+str(len(acc_mags_SDSS))+'_objects'   
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+        print 'Saving names, and mags  to ...', outfile 
+        
+        print 'Mean SDSS magnitudes are ', np.mean(acc_mags_SDSS)
+        print 'Median SDSS magnitudes are ', np.median(acc_mags_SDSS)
+        print 'Mean CRTS magnitudes are ', np.mean(acc_mags_CRTS)
+        print 'Median CRTS magnitudes are ', np.median(acc_mags_CRTS)
+        
        
     
-get_magnitudes()    
+#get_magnitudes()    
     
-def pickle_sample(qso=qso, star_b = star_b, star_r = star_r, pre='Sample_1_'):
+def pickle_sample(qso=qso, star_b = star_b, star_r = star_r, pre=pre,
+                  qso_cat = qso_cat, star_cat = star_cat, qso_names=qso_names,
+                  good_ids_QSO=good_ids_QSO, good_ids_S_blue=good_ids_S_blue,
+                  good_ids_S_red=good_ids_S_red):
     '''
     Save the data in the sample log(tau) < 1.7 , and delflx within 
     histogram limits (for QSO, -1.5 : 1.5,   for stars -1 : 1), 
     save to a text file, and to an npz file (which may be easier to 
     read in later )
     '''    
-
-    # QSO DATA SAVE 
-    delflx = qso[0]
-    tau = qso[1]
-    delflxerr = qso[2]
-    name = qso[3]
     
-    DATA = np.column_stack((delflx,tau,delflxerr, name))
-    outfile = 'QSO_'+str(len(delflx))+'_lines'   
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    #np.savez(outfile+'.npz', delflx=delflx,tau=tau,delflxerr=delflxerr, name=name)
-    print 'Saving all to ...', outfile 
+    do_qso = 'yes'
+    do_S_blue ='yes'
+    do_S_red ='yes'
     
-    # DEFINE THE SAMPLE (FOR QSO... )
-    hist_xlim=[-1.5,1.5]
-    mask_tau =np.log10(tau)<1.7
-    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
-    mask = mask_tau * mask_delflx
-    delflx_sm = delflx[mask]
-    delflxerr_sm = delflxerr[mask]
-    xi = delflx_sm
-    ei = delflxerr_sm
-    ni = name[mask]
+    ############################################################
+    #######################  QSO DATA  #########################
+    ############################################################
     
-    # SAVE TO FILE .... 
-    DATA = np.column_stack((xi,ei,ni))    
-    outfile = pre+'QSO_'+str(len(xi))+'_lines'
-    print 'Saving the sample to ...', outfile 
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
-    
-    # BLUE STARS DATA SAVE 
-    
-    delflx = star_b[0]
-    tau = star_b[1]
-    delflxerr = star_b[2]
-    name = star_b[3]
-    
-    DATA = np.column_stack((delflx,tau,delflxerr, name))
-    outfile = 'Stars_blue_'+str(len(delflx))+'_lines'  
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    print 'Saving all to ...', outfile 
-     
-    # DEFINE THE SAMPLE (FOR QSO... )
-    hist_xlim=[-1,1]
-    mask_tau =np.log10(tau)<1.7
-    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
-    mask = mask_tau * mask_delflx
-    delflx_sm = delflx[mask]
-    delflxerr_sm = delflxerr[mask]
-    xi = delflx_sm
-    ei = delflxerr_sm
-    ni = name[mask]
-    
-    # SAVE TO FILE .... 
-    DATA = np.column_stack((xi,ei,ni))    
-    outfile = pre+'Stars_blue_'+str(len(xi))+'_lines'
-    
-    print 'Saving the sample to ...', outfile 
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
-    
-    # RED STARS DATA SAVE 
-    
-    delflx = star_r[0]
-    tau = star_r[1]
-    delflxerr = star_r[2]
-    name = star_r[3]
-    
-    DATA = np.column_stack((delflx,tau,delflxerr, name))
-    outfile = 'Stars_red_'+str(len(delflx))+'_lines'   
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    print 'Saving all to ...', outfile
-    # DEFINE THE SAMPLE (FOR QSO... )
-    hist_xlim=[-1,1]
-    mask_tau =np.log10(tau)<1.7
-    mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
-    mask = mask_tau * mask_delflx
-    delflx_sm = delflx[mask]
-    delflxerr_sm = delflxerr[mask]
-    xi = delflx_sm
-    ei = delflxerr_sm
-    ni = name[mask]
-    
-    # SAVE TO FILE .... 
-    DATA = np.column_stack((xi,ei,ni))    
-    outfile = pre+'Stars_red_'+str(len(xi))+'_lines'
-    print 'Saving the sample to ...', outfile 
-     
-    np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
-    #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
-    
+    if do_qso =='yes':
+        delflx = qso[0]
+        tau = qso[1]
+        delflxerr = qso[2]
+        name = qso[3]
+        
+        uniq_names = np.unique(name)  
+        print 'There are ',len(uniq_names),'uniq names in the entire QSO list '
+        print 'There were', len(good_ids_QSO), 'uniq names which were selected initially'
+        
+        mask_names = np.in1d(good_ids_QSO, uniq_names)
+        missing_QSO = good_ids_QSO[-mask_names]
+        print 'Thus there are ', len(missing_QSO), 'missing QSOs' 
+        np.savetxt('missing_QSO.txt', np.column_stack((missing_QSO)), fmt='%s')
+        
+        
+        # SAVE ALL THE QSO LINES 
+        DATA = np.column_stack((delflx,tau,delflxerr, name))
+        outfile = 'QSO_all_'+str(len(delflx))+'_lines'   
+        header = ' delflx  tau  delflxerr  name  '
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s", header=header)
+        #np.savez(outfile+'.npz', delflx=delflx,tau=tau,delflxerr=delflxerr, name=name)
+        print 'Saving all lines to ...', outfile 
+        
+        # DEFINE THE SAMPLE (FOR QSO... )
+        hist_xlim=[-1.5,1.5]
+        mask_tau =np.log10(tau)<1.7
+        mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+        mask = mask_tau * mask_delflx
+        delflx_sm = delflx[mask]
+        delflxerr_sm = delflxerr[mask]
+        xi = delflx_sm
+        ei = delflxerr_sm
+        ni = name[mask]
+        names_sample = np.unique(ni)
+        print 'Our sample for with log(tau) < 1.7, and -1.5< delflx< 1.5 is', len(xi), 'lines of ', len(delflx)
+        print 'There are ', len(names_sample), ' QSOs in this subsample from', len(uniq_names), ' initial sample'    
+        # grab only those SDSS r mags that pertain to QSO's in the sample .. 
+        mask_mags = np.in1d(qso_names, names_sample)     
+        SDSS_r_mags = qso_cat['r'][mask_mags]
+        
+        # GET FOR EACH QSO IN SUBSAMPLE THE SDSS R MAG, based on name comparison
+        sdss_mi = np.zeros_like(ei)   # sdss mag
+        
+        # sdss g magnitudes that correspond to good_ids_QSO objects, 
+        # which are in my sample , and which names correspond to ni
+        
+        for i in range(len(names_sample)):
+            mask = np.in1d(ni, names_sample[i])
+            sdss_mi[mask] = SDSS_r_mags[i]
+            if i % 200 == 0 : 
+                print 'QSO : comparing ', i, '-th obj. id of ', len(names_sample)
+        
+        # SAVE QSO SAMPLE LINES TO FILE .... 
+        DATA = np.column_stack((xi,ei,ni,sdss_mi))    
+        outfile = pre+'_QSO_'+str(len(xi))+'_lines'
+        print 'Saving the sample lines to ...', outfile 
+        header = 'delflx  deflxerr  obj_ID  SDSS_r_mMed'
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s", header=header)
+        #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
+        
+        #return xi, ei, ni, sdss_mi 
+        
+    ############################################################
+    ##################### BLUE STARS DATA ######################
+    ############################################################
+    if do_S_blue == 'yes':
+        delflx = star_b[0]
+        tau = star_b[1]
+        delflxerr = star_b[2]
+        name = star_b[3]
+        
+        # SAVE BLUE STARS ALL LINES  TO FILE ... 
+        DATA = np.column_stack((delflx,tau,delflxerr, name))
+        outfile = 'Stars_blue_'+str(len(delflx))+'_lines'  
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+        print 'Saving all lines  to ...', outfile 
+         
+        # DEFINE THE SAMPLE (FOR BLUE STARS ... )
+        hist_xlim=[-1,1]
+        mask_tau =np.log10(tau)<1.7
+        mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+        mask = mask_tau * mask_delflx
+        delflx_sm = delflx[mask]
+        delflxerr_sm = delflxerr[mask]
+        xi = delflx_sm
+        ei = delflxerr_sm
+        ni = name[mask]
+        
+        # GET FOR STARS IN SUBSAMPLE SDSS R_MAGS
+        sdss_mi = np.zeros_like(ei)   # sdss mag
+        sdss_r_mags = star_cat['r_mMed'][np.in1d(star_cat['crts_id'], good_ids_S_blue.astype(float))]
+        # sdss g magnitudes that correspond to good_ids_QSO objects, 
+        # which are in my sample , and which names correspond to ni
+        
+        for i in range(len(good_ids_S_blue)):
+            mask = np.in1d(ni, good_ids_S_blue[i])
+            sdss_mi[mask] = sdss_r_mags[i]
+            if i % 100 == 0 : 
+                
+                print 'Blue Stars : comparing ', i, '-th obj. id'
+        
+        # SAVE  BLUE STARS SAMPLE LINES  TO FILE .... 
+        DATA = np.column_stack((xi,ei,ni,sdss_mi))    
+        header = 'delflx  delflxerr  obj_ID  SDSS_r_mMed'
+        outfile = pre+'_Stars_blue_'+str(len(xi))+'_lines'
+        
+        print 'Saving the sample lines to ...', outfile 
+        header = 'delflx  deflxerr  obj_ID  SDSS_r_mMed'
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s", header=header)
+        #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
+        
+    ############################################################
+    ##################### RED STARS DATA #######################
+    ############################################################
+    if do_S_red == 'yes':
+        delflx = star_r[0]
+        tau = star_r[1]
+        delflxerr = star_r[2]
+        name = star_r[3]
+        
+        # SAVE ALL LINES FOR RED STARS TO FILE 
+        DATA = np.column_stack((delflx,tau,delflxerr, name))
+        outfile = 'Stars_red_'+str(len(delflx))+'_lines'   
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s")
+        print 'Saving all lines to ...', outfile
+        
+        # DEFINE THE SAMPLE (FOR RED STARS ... )
+        hist_xlim=[-1,1]
+        mask_tau =np.log10(tau)<1.7
+        mask_delflx = (delflx<hist_xlim[1]) * (delflx>hist_xlim[0])
+        mask = mask_tau * mask_delflx
+        delflx_sm = delflx[mask]
+        delflxerr_sm = delflxerr[mask]
+        xi = delflx_sm
+        ei = delflxerr_sm
+        ni = name[mask]
+        
+        # GET FOR RED  STARS IN SUBSAMPLE SDSS R_MAGS
+        sdss_mi = np.zeros_like(ei)   # sdss mag
+        sdss_r_mags = star_cat['r_mMed'][np.in1d(star_cat['crts_id'], good_ids_S_red.astype(float))]
+        # sdss g magnitudes that correspond to good_ids_QSO objects, 
+        # which are in my sample , and which names correspond to ni
+        
+        for i in range(len(good_ids_S_red)):
+            mask = np.in1d(ni, good_ids_S_red[i])
+            sdss_mi[mask] = sdss_r_mags[i]
+            if i % 100 == 0 : 
+                print 'Red Stars: comparing ', i, '-th obj. id'
+            
+        # SAVE TO THE RED STARS SAMPLE LINES TO A FILE .... 
+        DATA = np.column_stack((xi,ei,ni, sdss_mi))    
+        outfile = pre+'_Stars_red_'+str(len(xi))+'_lines'
+        print 'Saving the sample  lines to ...', outfile 
+        header = 'delflx  delflxerr  obj_ID  SDSS_r_mMed'
+        np.savetxt(outfile+'.txt', DATA, delimiter =' ', fmt="%s", header=header)
+        #np.savez(outfile+'.npz', xi=xi, ei=ei, ni=ni)
+        
     return  xi, ei
     
 ah = pickle_sample()   

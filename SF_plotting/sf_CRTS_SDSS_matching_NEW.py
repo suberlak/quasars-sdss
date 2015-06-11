@@ -45,23 +45,68 @@ def load_sdss_stars():
 #### SDSS QUASARS  #########
 ############################
 
-def load_sdss_qso():
-    File = '../s82drw/s82drw_g.dat'
-    datatable = np.genfromtxt(File)
-    colnames = ['SDR5ID', 'ra', 'dec', 'redshift', 'M_i', 'mass_BH', 
-                'chi^2_pdf', 'log10(tau[days])', 'log10(sigma_hat)',
-                'log10(tau_lim_lo)', 'log10(tau_lim_hi)',  'log10(sig_lim_lo)',
-                'log10(sig_lim_hi)', 'edge_flag', 'Plike',  'Pnoise', 'Pinf',
-                'mu', 'npts' ]
+def load_sdss_qso(catalog = 'DB_QSO'):
+    '''
+    Choose where the catalog is coming : is it 
+    DB_QSO  : DB_QSO_S82.dat, with SDSS ugriz, for 9258 objects
+    master_QSO : master database with SDSS-2MASS cross-matched photometry &
+                 errors for 8974 objects
+    s82_drw : s82_drw*.dat  files, which are very similar to DB_QSO, except 
+              that they quote DRW fitting results for a given SDSS band 
+              photometry (hence 5 s82_drw*  files where '*' = u,g,r,i,z )
+              
+    NOTE:  all catalogs taken from
+    http://www.astro.washington.edu/users/ivezic/cmacleod/qso_dr7/Southern.html
     
-    data_quasars = {}
-    print 'zipping quasars...'
-    for label, column in zip(colnames, datatable.T):
-        data_quasars[label] = column
+    '''
+    if catalog == 's82drw' : 
+        # note : ra and dec in degrees
+        File = '../s82drw/s82drw_g.dat'
+        datatable = np.genfromtxt(File)
+        colnames = ['SDR5ID', 'ra', 'dec', 'redshift', 'M_i', 'mass_BH', 
+                    'chi^2_pdf', 'log10(tau[days])', 'log10(sigma_hat)',
+                    'log10(tau_lim_lo)', 'log10(tau_lim_hi)',  'log10(sig_lim_lo)',
+                    'log10(sig_lim_hi)', 'edge_flag', 'Plike',  'Pnoise', 'Pinf',
+                    'mu', 'npts' ]
         
-    print 'I read in data for ', len(data_quasars['ra']), ' SDSS quasars'
-    
-    return data_quasars
+        data_quasars = {}
+        print 'zipping quasars...'
+        for label, column in zip(colnames, datatable.T):
+            data_quasars[label] = column
+            
+        print 'I read in data for ', len(data_quasars['ra']), ' SDSS quasars'
+        print 'From catalog ', File
+        return data_quasars
+        
+    if catalog == 'DB_QSO' : 
+        # note : ra and dec in degrees
+        File = 'DB_QSO_S82.dat'
+        datatable = np.genfromtxt(File)
+        colnames = ['dbID', 'ra', 'dec', 'SDR5ID', 'M_i', 'M_i_corr', 'redshift',
+                   'mass_BH', 'Lbol', 'u', 'g', 'r', 'i', 'z', 'Au']
+        data_quasars = {}
+        print 'zipping quasars...'
+        for label, column in zip(colnames, datatable.T):
+            data_quasars[label] = column
+        
+        print 'I read in data for ', len(data_quasars['ra']), ' SDSS quasars'
+        print 'From catalog ', File
+        return data_quasars
+        
+    if catalog == 'master_QSO' :
+        File = 'master_QSO_S82.dat'
+        datatable = np.genfromtxt(File, usecols=np.arange(14))
+        colnames = ['dbID', 'ra', 'dec','redshift', 'u', 'err_u', 'g', 'err_g',
+                    'r', 'err_r', 'i', 'err_i', 'z','err_z'] 
+        data_quasars = {}
+        print 'zipping quasars...'
+        for label, column in zip(colnames, datatable.T):
+            data_quasars[label] = column
+        
+        print 'I read in data for ', len(data_quasars['ra']), ' SDSS quasars'
+        print 'From catalog ', File
+        return data_quasars            
+   
     
 ############################
 ####  CRTS STARS #######\
@@ -282,10 +327,11 @@ def match_stars():
     ind = SDSS_matching_rows
     datatable=np.array([avg_mag, avg_err,  sdss_star_data['dec'][ind], sdss_star_data['ra'][ind],
                          dec_deg_CRTS, ra_deg_CRTS, sdss_star_data['g_Nobs'][ind], 
-                        sdss_star_data['g_mMed'][ind], sdss_star_data['i_mMed'][ind],
+                        sdss_star_data['g_mMed'][ind], sdss_star_data['r_mMed'][ind],
+                        sdss_star_data['i_mMed'][ind],
                         crts_id, mjd_span, mjd_uniq_N, N_rows ])
     colnames = ['CRTS_M','CRTS_Merr', 'dec_SDSS', 'ra_SDSS', 'dec_CRTS',
-                'ra_CRTS', 'g_Nobs', 'g_mMed', 'i_mMed', 'crts_id', 'mjd_span', 
+                'ra_CRTS', 'g_Nobs', 'g_mMed','r_mMed', 'i_mMed', 'crts_id', 'mjd_span', 
                 'mjd_N', 'N_rows']
     
 #    colnames = ['calib_fla', 'ra', 'dec', 'raRMS', 'decRMS', 'nEpochs', 'AR_val', 
@@ -307,16 +353,10 @@ def match_stars():
     
     archive_SDSS_CRTS = 'CRTS_SDSS_cross_matched_stars_catalog.txt' 
     keys = colnames
-    DATA = np.column_stack((data_SDSS_CRTS[keys[12]], data_SDSS_CRTS[keys[11]],
-                            data_SDSS_CRTS[keys[10]], data_SDSS_CRTS[keys[9]], 
-                            data_SDSS_CRTS[keys[8]],  data_SDSS_CRTS[keys[7]], 
-                            data_SDSS_CRTS[keys[6]],  data_SDSS_CRTS[keys[5]],
-                            data_SDSS_CRTS[keys[4]],  data_SDSS_CRTS[keys[3]], 
-                            data_SDSS_CRTS[keys[2]],  data_SDSS_CRTS[keys[1]],
-                            data_SDSS_CRTS[keys[0]]))    
+    DATA = np.column_stack((datatable))    
     
     header=''
-    for key in keys[::-1] : 
+    for key in keys: 
         header= header+'{:<10}'.format(key[:10])+' '
     
     fmt = ['%s', '%.4e', '%10.5f']   # formatters to choose from...  
@@ -326,20 +366,27 @@ def match_stars():
     
     return SDSS_matching_rows, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data 
        
+    #  fmt='%11.5f'*8+'%6.i'+'%5.i'*2
+    
+    
+    
     
 ##############  ACTION  : MATCHING QUASARS  ############### 
 
     
-def match_quasars():
-
-    # load names from CRTS \
+def match_quasars(catalog):
+    '''
+    For catalog matching need to choose SDSS catalog: 
+    's82drw' or 'DB_QSO' 
+    '''
+    # load names from CRTS 
     DIR = crts_dirs[0]
     crts_qso_names = load_crts_qso(DIR)
     
     # load data from SDSS
-    sdss_qso_data =  load_sdss_qso()
+    sdss_qso_data =  load_sdss_qso(catalog=catalog)
         
-    # LOOP OVER QUASARS 
+    # LOOP OVER CRTS QUASARS 
     archive_file='CRTS_qso_LC_params.npz'
     # Check whether this has not been done already :
     if not os.path.exists(archive_file) :
@@ -407,7 +454,7 @@ def match_quasars():
     ra_deg_CRTS, dec_deg_CRTS = convert_to_deg(ra_hms_split, dec_hms_split)
     
     # Matching CRTS to SDSS  : which SDSS row corresponds to which CRTS row... 
-    archive_file_matching = 'CRTS_SDSS_qso_matched_rows.npz'
+    archive_file_matching = 'CRTS_SDSS_qso_'+catalog+'_matched_rows.npz'
     
     if not os.path.exists(archive_file_matching) :
         print '\n- Computing the SDSS matching rows to CRTS quasars'
@@ -417,9 +464,10 @@ def match_quasars():
                                                             cat2_dec=sdss_qso_data['dec'], 
                                                             archive_file=archive_file_matching) 
         np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows)
+        print '\n- Saved the SDSS-CRTS quasars matched rows to ', archive_file_matching
    
     else:
-        print '\n- Using precomputed SDSS rows matched to CRTS quasars'
+        print '\n- Using precomputed SDSS rows matched to CRTS quasars from ', archive_file_matching
         archive =np.load(archive_file_matching)
         SDSS_matching_rows = archive['SDSS_matching_rows']
         
@@ -432,50 +480,91 @@ def match_quasars():
     
     
     # Save the list of names of CRTS Quasars 
+    # independent of SDSS catalog choice, because 
+    # saving here only CRTS names to which SDSS is matched 
+    
     qso_names_file = 'CRTS_SDSS_cross_matched_qso_names.txt'
     np.savetxt(qso_names_file, crts_qso_names, fmt='%s')
-    print '\nSaving the SDSS-CRTS quasar file names to',   qso_names_file
+    print '\nSaving the CRTS quasar file names to',   qso_names_file
     # Save all other measurable quantities for CRTS - SDSS quasars 
-    datatable=np.array([avg_mag, avg_err, sdss_qso_data['M_i'][ind], sdss_qso_data['redshift'][ind], 
-               sdss_qso_data['ra'][ind], sdss_qso_data['dec'][ind], ra_deg_CRTS, dec_deg_CRTS,
-                 mjd_span, mjd_uniq_N, N_rows])
-    colnames = ['CRTS_avg_mag','CRTS_avg_err','M_i', 'redshift', 'dec_CRTS', 'ra_CRTS', 
-    'dec_SDSS','ra_SDSS', 'mjd_span', 'mjd_uniq_N', 'N_rows']
-    # NOTE: colnames is read from the right....
-    
+    if catalog == 's82drw' : 
+        datatable=np.array([avg_mag, avg_err, sdss_qso_data['M_i'][ind], 
+                          sdss_qso_data['redshift'][ind], sdss_qso_data['ra'][ind], 
+                          sdss_qso_data['dec'][ind], ra_deg_CRTS, dec_deg_CRTS,
+                          mjd_span, mjd_uniq_N, N_rows])
+        colnames = ['CRTS_avg_mag','CRTS_avg_err','M_i', 'redshift', 'dec_CRTS',
+                    'ra_CRTS',  'dec_SDSS','ra_SDSS', 'mjd_span', 'mjd_uniq_N',
+                    'N_rows']
+        # NOTE: colnames is read from the right....
+    if catalog == 'DB_QSO' :
+        datatable=np.array([avg_mag, avg_err, sdss_qso_data['z'][ind], 
+                          sdss_qso_data['i'][ind], sdss_qso_data['r'][ind],
+                          sdss_qso_data['g'][ind], sdss_qso_data['u'][ind], 
+                          sdss_qso_data['redshift'][ind], sdss_qso_data['ra'][ind], 
+                          sdss_qso_data['dec'][ind], ra_deg_CRTS, dec_deg_CRTS,
+                          mjd_span, mjd_uniq_N, N_rows])
+        colnames = ['CRTS_avg_mag','CRTS_avg_err', 'z', 'i', 'r', 'g', 'u', 
+                    'redshift', 'ra_SDSS', 'dec_SDSS', 'ra_CRTS', 'dec_CRTS', 
+                    'mjd_span', 'mjd_uniq_N', 'N_rows']
+    if catalog == 'master_QSO' :
+        datatable=np.array([avg_mag, avg_err, sdss_qso_data['u'][ind], 
+                          sdss_qso_data['err_u'][ind], sdss_qso_data['g'][ind], 
+                          sdss_qso_data['err_g'][ind], sdss_qso_data['r'][ind],
+                          sdss_qso_data['err_r'][ind], sdss_qso_data['i'][ind],
+                          sdss_qso_data['err_i'][ind], sdss_qso_data['z'][ind], 
+                          sdss_qso_data['err_z'][ind], sdss_qso_data['redshift'][ind], 
+                          sdss_qso_data['ra'][ind], sdss_qso_data['dec'][ind], 
+                          ra_deg_CRTS, dec_deg_CRTS, mjd_span, mjd_uniq_N, N_rows])
+        colnames = ['CRTS_avg_mag','CRTS_avg_err', 'u', 'err_u', 'g', 'err_g',
+                    'r', 'err_r', 'i', 'err_i', 'z','err_z', 
+                    'redshift', 'ra_SDSS', 'dec_SDSS', 'ra_CRTS', 'dec_CRTS', 
+                    'mjd_span', 'mjd_uniq_N', 'N_rows']
+
     data_qso_SDSS_CRTS= {}
     print '\nZipping  quasars...'
     
     for label, column in zip(colnames, datatable):
         data_qso_SDSS_CRTS[label] = column
-    print 'I made a dictionary with data for ', len(data_qso_SDSS_CRTS['M_i']), ' SDSS-CRTS cross-matched quasars'
+    print 'I made a dictionary with data for ', len(data_qso_SDSS_CRTS['redshift']), \
+          ' CRTS-SDSS cross-matched quasars'
     
-    archive_SDSS_CRTS_qso = 'CRTS_SDSS_cross_matched_qso_catalog.txt'
+    archive_SDSS_CRTS_qso = 'CRTS_SDSS_cross_matched_qso_'+catalog+'_catalog.txt'
 
     print '\nSaving the SDSS-CRTS cross-matched QSO catalog...' 
     print ' to ', archive_SDSS_CRTS_qso
      
     keys = colnames
-    DATA = np.column_stack((
-                            data_qso_SDSS_CRTS[keys[10]], data_qso_SDSS_CRTS[keys[9]], 
-                            data_qso_SDSS_CRTS[keys[8]],  data_qso_SDSS_CRTS[keys[7]], 
-                            data_qso_SDSS_CRTS[keys[6]],  data_qso_SDSS_CRTS[keys[5]],
-                            data_qso_SDSS_CRTS[keys[4]],  data_qso_SDSS_CRTS[keys[3]], 
-                            data_qso_SDSS_CRTS[keys[2]],  data_qso_SDSS_CRTS[keys[1]],
-                            data_qso_SDSS_CRTS[keys[0]]))    
+    if catalog == 's82drw':
+        DATA = np.column_stack((datatable))   
+                                #  data_qso_SDSS_CRTS[keys[10]], data_qso_SDSS_CRTS[keys[9]], 
+                               # data_qso_SDSS_CRTS[keys[8]],  data_qso_SDSS_CRTS[keys[7]], 
+                               # data_qso_SDSS_CRTS[keys[6]],  data_qso_SDSS_CRTS[keys[5]],
+                               # data_qso_SDSS_CRTS[keys[4]],  data_qso_SDSS_CRTS[keys[3]], 
+                               # data_qso_SDSS_CRTS[keys[2]],  data_qso_SDSS_CRTS[keys[1]],
+                               # data_qso_SDSS_CRTS[keys[0]]
+        
+        header=''
+        # http://stackoverflow.com/questions/766141/reverse-a-string-in-python 
+        for key in keys : 
+            header= header+'{:<10}'.format(key[:10])+' '
+        
+        #fmt = ['%s', '%.4e', '%10.5f']
+        np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%11.5f'*8+'%6.i'+'%5.i'*2, header=header)
     
-    header=''
-    for key in keys[::-1] : 
-        header= header+'{:<10}'.format(key[:10])+' '
+    if catalog == 'DB_QSO':
+        DATA = np.column_stack((datatable))    
+        
+        header=''
+        for key in keys : 
+            header= header+'{:<10}'.format(key[:10])+' '
+
+        #fmt = ['%s', '%.4e', '%10.5f']
+        np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%11.5f'*12+'%6.i'+'%5.i'*2, header=header)
+  
     
-    
-    
-    #fmt = ['%s', '%.4e', '%10.5f']
-    
-    np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%5.i'*2+'%6.i'+'%11.5f'*8, header=header)
-    return crts_qso_names
+    return data_qso_SDSS_CRTS
 
 # Call all the necessary functions
 #SDSS_idx, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data  = match_stars() 
-crts = match_quasars()
+#crts = match_quasars(catalog='master_QSO')  # or 'master_qso',  's82drw'
 match_stars()
