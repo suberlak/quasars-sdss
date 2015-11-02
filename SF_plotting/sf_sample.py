@@ -22,11 +22,12 @@ import matplotlib.pyplot as plt
 from astroML.plotting import scatter_contour 
 from astroML.stats import median_sigmaG
 from scipy.stats import binned_statistic
+import seaborn as sns 
+sns.set_context("poster")
 
 # pip install astroML --user
 
 # READ IN THE FILES  
-
 def read_file(obj):
     '''
     By default, want to use SDSS_r filter data. However, accidentally 
@@ -59,13 +60,6 @@ def read_file(obj):
         data[label] = column
 
     return data
-    
-starB_gMag = read_file('StarB_g')
-starB_rMag = read_file('StarB')
-starR_gMag = read_file('StarR_g') 
-starR_rMag = read_file('StarR')
-QSO = read_file('QSO') 
-
 
 # DEFINE GAUSSIAN TO BE CONVOLVED 
 
@@ -135,8 +129,9 @@ def approximate_mu_sigma(xi, ei, axis=None):
 
     return mu_approx, sigma_approx     
      
-def get_sigma_mu(xi,ei, approx=True, y_34 = 'mode', return_p = False, return_sigma=False, mu_s=100, 
-             sig_s=40, sig_lim=[0.00,0.5], mu_lim=[-0.2,0.2]):
+def get_sigma_mu(xi,ei, return_sigma=False, return_p=False, y_34 = 'mode',  
+                 mu_s=100, sig_s=40, sig_lim=[0.00,0.5], mu_lim=[-0.2,0.2],
+                 approx=False):
     '''
     y_34 defines how sigma and mu are calculated based on p_sigma and p_mu 
     distributions : available   mode, exp, median (note : need to increase
@@ -164,7 +159,7 @@ def get_sigma_mu(xi,ei, approx=True, y_34 = 'mode', return_p = False, return_sig
     # APPROXIMATE WAY 
     #
     if approx == True : 
-        mu_i, sigma_i = approximate_mu_sigma(xi, ei, mu_s=mu_s, sig_s = sig_s)
+        mu_i, sigma_i = approximate_mu_sigma(xi, ei)
         return mu_i, sigma_i
     
     #
@@ -239,23 +234,27 @@ def get_sigma_mu(xi,ei, approx=True, y_34 = 'mode', return_p = False, return_sig
 # Calculate statistics for the sample ... 
 
 def get_stats(y, y_err, mu_sig_sample):
- 
+    """ Calculate statistics for the y, y_err 1D arrays
+    
+    This function calls get_sigma_mu to calculate mu, sigma, based on the 
+    p_sigma and p_mu distributions based on Fig. 5.7 AstroML.  
+    Size of sigma  and mu space over which 
+    p_sigma and p_mu are calculated is variable, depends on  mu_s, sig_s which 
+    define the size of linear spaces, and  mu_lim, sig_lim , which define their
+    extent.  From probability distributions both sigma and mu are calculated 
+    as mean, mode or expectation value of the probability distribution, 
+    depending on the value of y_34 parameter.  
+    
+    One can also use the approximate way of finding mu, sigma, but by default 
+    it is disabled. 
+    """     
     y_34    = mu_sig_sample['y_34']
-    approx  = mu_sig_sample['approx'] 
     mu_s    = mu_sig_sample['mu_s']
     sig_s   = mu_sig_sample['sig_s']
     sig_lim = mu_sig_sample['sig_lim']
     mu_lim  = mu_sig_sample['mu_lim']
-    
-        
-    # Calculate mu, sigma with method from Fig. 5.7 AstroML
-    # it calculates it either approximate or full method, 
-    # depending on choice of approx. 
-    
-    # Set higher gridding for sigma and mu,  and   
-    # decrease the range of sigma and mu, just like in p_distributions_sample()
-    
-    mu_bin, sigma_bin = get_sigma_mu(y,y_err, approx, y_34, sig_s=sig_s, mu_s=mu_s,
+     
+    mu_bin, sigma_bin = get_sigma_mu(y, y_err, y_34, sig_s=sig_s, mu_s=mu_s,
                                  sig_lim = sig_lim, mu_lim = mu_lim)
     #mu_app, sigma_app = approximate_mu_sigma(xi, ei)
     SF = sigma_bin
@@ -265,19 +264,24 @@ def get_stats(y, y_err, mu_sig_sample):
 
        
 def get_histogram(xdata, nbins):
-    # Calculate unnormalized histogram, divided by the N_sample at the end 
+    """ Calculate simple histogram given the 1D data array, and number of bins. 
+    
+    It first calculates unnormalized histogram (because numpy normalization 
+    works in  a way so that the integral over all space=1 , which is not what
+    I want). Then it divides it by the number of elements in the input data array,
+    and the bin width. 
+    In case a normalisation was needed, I calculate the area under the histogram,
+    to scale up the gaussian by the area. 
+    In case a normalised gaussian was needed, I also calculate it, but bins 
+    are the same as for not-normalised gaussian . 
+    """
+    
     N_hist_ttl = float(len(xdata))
     hist, bin_edges = np.histogram(xdata, bins=nbins, density=False) 
-    # density = False instead of density = True 
-    # ensures I do the normalisation my way : then I need to calculate the area 
-    # under the curve, and scale up the gaussian so that they are normalised with 
-    # respect to each other , but not to unit area  
-    
     bin_cen = (bin_edges[:-1] + bin_edges[1:])/2 
     bin_width = (bin_edges[-1] - bin_edges[0]) / float(nbins)
     bin_width = bin_edges[1]-bin_edges[0]
     hist  = hist / (N_hist_ttl * bin_width)
-    
     area = np.sum(bin_width * hist)
     
     print 'N_hist_ttl=', N_hist_ttl
@@ -287,19 +291,21 @@ def get_histogram(xdata, nbins):
     # Calculate normalised histogram, so that the INTEGRAL under the curve=1
     # This allows me to overplot the Gaussian too! 
     hist_n, edges = np.histogram(xdata, bins=nbins, density=True)
-    # Just in case, also calculate the histogram normalized to 1  
-    
     return hist, hist_n, bin_cen, area        
     
     
-def combine_gaussians(xi=starB_rMag['delflx'], ei=starB_rMag['delflxerr'], hist_xlim, SF, mu ):
+def combine_gaussians(hist_xlim, sigma, mu, xi, ei, err_f=1.0 ):
+    """ A function to convolve gaussians according to chosen model
+    
+    """
+    
     xgrid = np.linspace(hist_xlim[0], hist_xlim[1], 10000)
     N = float(len(xi))
            
     
     model2 = np.zeros_like(xgrid)
     for i in range(len(xi)):
-        sig_com = np.sqrt(sigma ** 2.0 + ei[i]**2.0)
+        sig_com = np.sqrt(sigma ** 2.0 + (err_f*ei[i])**2.0)
         Gi =  gaussian(xgrid,mu, sig_com)
         model2 += Gi  
     model2= (1.0 / N) * model2   
@@ -308,55 +314,280 @@ def combine_gaussians(xi=starB_rMag['delflx'], ei=starB_rMag['delflxerr'], hist_
     
 # PLOT THINGS...
 # Cols are # delflx  delflxerr  obj_ID  SDSS_r_mMed
+    
+#starB_gMag = read_file('StarB_g')
+#starB_rMag = read_file('StarB')
+#starR_gMag = read_file('StarR_g') 
+#starR_rMag = read_file('StarR')
+ 
 
-
-fig1 = plt.figure(figsize=(12,12))
-ax1 = fig1.add_subplot(221)
-
-# Use SDSS g magnitudes...
-#ax1.scatter( starB_gMag['SDSS_g_mMed'], starB_gMag['delflx'] / starB_gMag['delflxerr']  )
-scatter_contour(starB_gMag['SDSS_g_mMed'], starB_gMag['delflx'] / starB_gMag['delflxerr'],
-                threshold=400, log_counts=True, ax=ax1,histogram2d_args=dict(bins=40),
-                plot_args=dict(marker=',', linestyle='none', color='black'))
-ax1.set_xlabel('SDSS g magnitudes')
-ax1.set_ylabel(r'$\chi= \Delta (CRTS \, mag) \, / \,(CRTS \, err)$')
-ax1.set_title('Blue Stars')
+#fig1 = plt.figure(figsize=(12,12))
+#ax1 = fig1.add_subplot(221)
+#
+## Use SDSS g magnitudes...
+##ax1.scatter( starB_gMag['SDSS_g_mMed'], starB_gMag['delflx'] / starB_gMag['delflxerr']  )
+#scatter_contour(starB_gMag['SDSS_g_mMed'], starB_gMag['delflx'] / starB_gMag['delflxerr'],
+#                threshold=400, log_counts=True, ax=ax1,histogram2d_args=dict(bins=40),
+#                plot_args=dict(marker=',', linestyle='none', color='black'))
+#ax1.set_xlabel('SDSS g magnitudes')
+#ax1.set_ylabel(r'$\chi= \Delta (CRTS \, mag) \, / \,(CRTS \, err)$')
+#ax1.set_title('Blue Stars')
 
 # Use SDSS r magnitudes... 
-fig2 = plt.figure(figsize=(12,12))
-ax1 = fig2.add_subplot(221)
-scatter_contour(starB_rMag['SDSS_r_mMed'], starB_rMag['delflx'] / starB_rMag['delflxerr'],
-                threshold=400, log_counts=True, ax=ax1,histogram2d_args=dict(bins=40),
-                plot_args=dict(marker=',', linestyle='none', color='black'))
 
+def print_chi(data_dict, axis):
+    """ Make the chi plot 
+    
+    Some more doc if need be ... 
+    """
+    #plt.clf()
+    #fig = plt.figure()
+    #axis = fig.add_subplot(111)
+    
+    mags = data_dict['SDSS_g_mMed'] 
+    chi = data_dict['delflx'] / data_dict['delflxerr']
+    
+    # remove silly values     
+    mask = mags > 15
+    mags = mags[mask];  chi = chi[mask]
+    
+    scatter_contour(mags, chi, levels=15, threshold=50, log_counts=True, ax=axis,
+                    histogram2d_args=dict(bins=40), 
+                    plot_args=dict(marker=' ', linestyle='none', color='black'),
+                    contour_args=dict(cmap=plt.cm.jet))
+                  
+    rms_robust = lambda x : 0.7414 *(np.percentile(x,75) - np.percentile(x,25))
+    rms_std = lambda x : np.std(x)
+   
+   # The code below starts at 40 bins and calculates standard deviation sigma, 
+   # and robust sigma G for each bin, and finds the smallest number of bins 
+   # where there are no NaNs in any bin.
+   
+    
+    nbins1 = 40
+    diagnostic = 10
+    while  diagnostic > 0 : 
+        rms1_all = binned_statistic(mags, chi, statistic=rms_std, bins=nbins1)
+        nbins1 = nbins1 - 2
+        diagnostic = np.isnan(rms1_all[0]).sum() 
+    
+    nbins2 = 40
+    diagnostic = 10
+    while  diagnostic > 0 : 
+        rms2_all = binned_statistic(mags, chi, statistic=rms_robust, bins=nbins2)
+        nbins2 = nbins2 - 2
+        diagnostic = np.isnan(rms1_all[0]).sum()
+    
+    # Evaluated at the same bins as respective standard deviations... 
+    bin_means1 = binned_statistic(mags, chi, statistic = 'mean', bins=nbins1+2)[0]
+    bin_means2 = binned_statistic(mags, chi, statistic = 'mean', bins=nbins2+2)[0]
+        
+        
+    chi_rms1 = rms1_all[0]
+    mags1 = rms1_all[1][:-1] # number of bins is one more than that of values
+    
+    chi_rms2 = rms2_all[0]
+    mags2 = rms2_all[1][:-1]
+    
+    #return mags1, mags2, bin_means1, bin_means2, chi_rms1, chi_rms2
+    
+    sym = 56 # symbol size 
+    axis.scatter(mags1, bin_means1 + 2*chi_rms1,s=sym, alpha=1.0, color='yellow', edgecolors='black')
+    axis.scatter(mags1, bin_means1 - 2*chi_rms1,s=sym, alpha=1.0, color='yellow', edgecolors='black')
+    
+    axis.scatter(mags2, bin_means2 + 2*chi_rms2,s=sym, alpha=1.0, color='orange', edgecolors='black' )
+    axis.scatter(mags2, bin_means2 - 2*chi_rms2,s=sym, alpha=1.0, color='orange', edgecolors='black' )
+          
+    axis.set_xlim(xmin=17)
+    axis.set_ylim(ymin=-6, ymax=6)
+    axis.set_xlabel('SDSS r mag' )
+    axis.set_ylabel(r'$\chi = \Delta (CRTS \, mag) / (CRTS \, error) $')
+    #plt.savefig('test_test_test.png')
+    #plt.show()
+    #return mags1, mags2, bin_means1, bin_means2, chi_rms1, chi_rms2
 
+def load_xi_ei(data_dict, mag_min, mag_max):
+    """ Load delflx, delflxerr from sample files (star or QSO)
+    
+    It assumes that the data dictionary has fields delflx, delflxerr,
+    SDSS_r_mMed. So it'll not work if we use SDSS_g_mMed, or anything else...
+    """
+    
+    mask = (data_dict['SDSS_g_mMed'] < mag_max) * (data_dict['SDSS_g_mMed'] >mag_min)
+    delflx = data_dict['delflx'][mask]
+    delflxerr = data_dict['delflxerr'][mask]
+    return delflx, delflxerr
+    
+    
 # PLOT  HISTOGRAMS and GAUSSIANS for r magnitudes.... 
 
 # SETTINGS THAT CONTROL THE APPEARANCE OF HISTOGRAM, AND SIGMA, MU LINSPACES 
-mu_sig_sample={}
-colnames = ['bins_hist', 'hist_xlim', 'mu_s', 'sig_s','mu_lim', 'sig_lim','y_34', 'approx']
-datatable = [200, [-1.5,1.5], 2*40, 2*100, [-0.007,0.007 ], [0.17, 0.19],'mode', True]
+#mu_sig_sample={}
+#colnames = ['bins_hist', 'hist_xlim', 'mu_s', 'sig_s','mu_lim', 'sig_lim','y_34', 'approx']
+#datatable = [200, [-1.5,1.5], 40, 100, [-0.007,0.007 ], [0.17, 0.19],'mode', True]
 
-for label, column in zip(colnames, datatable):
-    mu_sig_sample[label] = column  
+#for label, column in zip(colnames, datatable):
+#    mu_sig_sample[label] = column  
     
     
 # BLUE Stars   mag: 17-18 
-mask = (starB_rMag['SDSS_r_mMed'] < 18) * (starB_rMag['SDSS_r_mMed'] >17)
-delflx = starB_rMag['delflx'][mask]
-delflxerr = starB_rMag['delflxerr'][mask]
-hist, hist_n, bins, area = get_histogram(xdata=delflx, nbins=200)
-SF, mu = get_stats(y=delflx, y_err=delflxerr, mu_sig_sample, mu_sig_generic) 
-xgrid, model = combine_gaussians(xi=delflx, ei=delflxerr, 
-                                 hist_xlim=[-1.0, 1.0], SF=SF, mu=mu )
+#delflx, delflxerr = load_xi_ei(starB_rMag, 17, 18)
+
+# QSO
 
 
-ax2 = fig2.add_subplot(222)
-ax2.plot(bins, hist,ls='steps', lw=2, label='data')
-ax2.plot(xgrid, model, lw=2, label=r'$\sigma=0, \, \mu=%d, \, f_{c}=1.0$' % mu )
+def plot_p_distr(delflx, delflxerr):
+    ''' A function to find SF (sigma) and mu for subsample of stars or QSO, 
+    from p-distributions. One essentially manually adjusts mu_lim, sig_lim, 
+    until the distribution contains the peak with good sampling (increasing
+    the sigma or mu space does not really work because the system easily 
+    runs out of memory when mu has 200 points and sig 80...
+    
+    '''
 
-# BLUE Stars   mag: 18-18.5 
+    mu_lim = [-0.004,-0.001]
+    sig_lim = [0.149, 0.153]
+    
+    mu,sigma = get_sigma_mu(xi=delflx, ei=delflxerr, sig_lim=sig_lim, 
+                            mu_lim=mu_lim, return_sigma=True)
+    mu_bin, sig_bin, p_mu, p_sigma = get_sigma_mu(xi=delflx, ei=delflxerr, 
+                            sig_lim=sig_lim, mu_lim=mu_lim, return_p=True)
+    fig = plt.figure()
+    plt.clf()
+   
+    ax1 = fig.add_subplot(211)
+    ax1.plot(mu, p_mu, '-o')
+    ax1.set_title('p(mu)')
+    ax1.scatter(mu_bin, p_mu[np.abs(mu-mu_bin) < 0.00001], marker='o', c='y')
+    
+    ax2 = fig.add_subplot(212)
+    ax2.plot(sigma, p_sigma, '-o')
+    ax2.set_title('p(sigma)')
+    fig.tight_layout()
+    plt.savefig('p_sigma_p_mu_QSO_18.5-19.png')
+    plt.show()    
 
-# BLUE Stars   mag: 18.5-19
+    print 'Calculating mode of p_sigma , p_mu, we get sigma=',sig_bin, \
+    ' mu=', mu_bin
+    
+    return mu, sigma, p_mu, p_sigma, mu_bin, sig_bin
+
+#out= plot_p_distr(delflx, delflxerr)
+ #SF, mu = get_stats(delflx, delflxerr, mu_sig_sample) 
+
+def do_panel_plot(data, mag_min, mag_max, sig, mu, hist_lim, filename, err_factor):
+    ''' A short loop that loops over the four panels for QSO / Blue Stars: 
+    in the upper left corner it makes chi plot, and in the following 
+    three panels (clockwise) it plots histograms of QSOs in the 
+    sample, and overplots two models: one with error_factor = 1.0, 
+    and another with error_factor = 1.3 , where 
+    model = SUM(Gaussians(mu, sqrt(SF^2+(err*err_f)^2)), and is more
+    defined in combined_gaussians() function.
+    
+    Accepts:
+    - data, which is  a dictionary with keys ['SDSS_r_mMed', 'delflx', 
+    'delflxerr', 'obj_ID'], 
+    - mag_min , mag_max : being lists of lower and upper magnitude limits in each
+    subsample of the three plots 
+    - sig, mu, which are lists of previously-computed mu and sigma 
+    from p-distributions for each subsample using  plot_p_distr()
+    - hist: limits on the histogram 
+    '''
+    # do the QSO plot 
+    plt.clf()
+    fig, axs = plt.subplots(2,2, figsize=(12, 12), facecolor='w', edgecolor='k')
+    #fig.subplots_adjust(hspace = .5, wspace=.5)
+    axs = axs.ravel()
+    # from http://stackoverflow.com/questions/17210646/python-subplot-within-a-loop-first-panel-appears-in-wrong-position
+    
+    # First plot the chi distr in the upper left corner 
+   
+    print_chi(data_dict=data, axis=axs[0])
+    
+    # Then loop over different ranges and plot the models... 
+    for i in range(len(mag_min)):
+        
+        delflx, delflxerr = load_xi_ei(data, mag_min[i], mag_max[i])
+        len_original = float(len(delflx))
+        mask = (delflx < hist_lim[1] )*(delflx>hist_lim[0])
+        delflx = delflx[mask]
+        delflxerr = delflxerr[mask]
+        percent = (100.0*float(len(delflx))) / len_original
+        print 'The hist limits criteria are satisfied by ', percent, ' percent'
+        
+        hist, hist_n, bins, area = get_histogram(xdata=delflx, nbins=150)
+        
+        # first model : SF^2 + ( 1.0 * err) ^2
+        #xgrid, model1 = combine_gaussians(xi=delflx, ei=delflxerr, 
+         #                            hist_xlim=hist_lim, sigma=sig[i], 
+         #                            mu=mu[i], err_f=0 )
+                                     
+        # second model : SF^2 + ( 1.3 * err) ^2
+        xgrid, model2 = combine_gaussians(xi=delflx, ei=delflxerr, 
+                                     hist_xlim=hist_lim, sigma=sig[i], 
+                                     mu=mu[i], err_f=err_factor[i] )                             
+                                     
+        # Plot the histogram    
+        axs[i+1].plot(bins, hist,ls='steps', lw=2, label='data')
+        axs[i+1].set_xlabel(r'$\Delta m$')
+        axs[i+1].set_ylabel(r'$n(bin) / (N \cdot \Delta (bin))$')
+        # Plot  model1
+        #model1_lab = r'$ f_{c}=1.0$' # % (sig[i], mu[i])
+        #axs[i+1].plot(xgrid, model1, lw=2, label=model1_lab )
+        
+        # Plot model2
+        model2_lab = r'$ f_{c}=%.2f$' %(err_factor[i]) #% (sig[i], mu[i])
+        axs[i+1].plot(xgrid, model2, lw=2, label=model2_lab )
+    
+        # Set x limits
+        axs[i+1].set_xlim(xmin=hist_lim[0], xmax=hist_lim[1])
+        
+        # Get y limits  
+        
+        ymin, ymax = axs[i+1].get_ylim()
+        # Add text saying the limits ... 
+        axs[i+1].text(0.1, 0.75*ymax, r'$%.1f < m < %.1f$'%(mag_min[i], mag_max[i]), fontsize=20)     
+        
+    #lgd =  plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))   
+    plt.savefig(filename+'_sample_panels.png') #,
+#                bbox_extra_artists=(lgd,), bbox_inches='tight')
+    plt.show()
+    
+    
 
 
+
+
+# What are the ranges of magnitude on each subplot 
+# from mag_min[i] to mag_max[i]
+mag_min = [17, 18, 18.5]
+mag_max = [18, 18.5, 19]
+
+# What are sigma (SF), mu, histogram limits (x-axis) for QSO and stars ? 
+# they are different for QSO's and stars 
+
+qso_sig = [0.0997, 0.10456, 0.15105]
+qso_mu = [-0.00097, -0.00033, -0.00254]
+starB_sig = [0,0,0, 0]
+starB_mu = [0,0, 0]
+hist_qso = [-1.0,1.0]
+hist_starB = [-1.0,1.0]
+
+# Set the error factor for the plots ...
+#err_inc = 0.72
+
+err_factor = [0.72, 0.91, 1.07]
+star_sigma_list = [0,0,0]
+qso_sigma_list = [0.045, 0.052, 0.07]
+
+
+# Read files 
+QSO = read_file('QSO')
+starB_rMag = read_file('StarB_g')
+
+
+#do_panel_plot(QSO, mag_min, mag_max, qso_sig, qso_mu, hist_qso, 'new_QSO', err_inc)
+#do_panel_plot(QSO,mag_min, mag_max, qso_sigma_list, qso_mu, 
+#              hist_starB, 'aaa_QSO', err_factor )
+do_panel_plot(starB_rMag,mag_min, mag_max, star_sigma_list, starB_mu, 
+              hist_starB, 'aaa_StarB', err_factor )
