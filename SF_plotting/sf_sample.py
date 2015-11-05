@@ -24,7 +24,12 @@ from astroML.stats import median_sigmaG
 from scipy.stats import binned_statistic
 import seaborn as sns 
 sns.set_context("poster")
-
+from matplotlib import rcParams
+rcParams['ytick.labelsize'] = 25
+rcParams['xtick.labelsize'] = 25
+rcParams['axes.labelsize'] = 25
+rcParams['axes.linewidth'] = 3
+rcParams['font.size'] = 25
 # pip install astroML --user
 
 # READ IN THE FILES  
@@ -348,14 +353,20 @@ def print_chi(data_dict, axis):
     chi = data_dict['delflx'] / data_dict['delflxerr']
     
     # remove silly values     
-    mask = mags > 15
-    mags = mags[mask];  chi = chi[mask]
+    m = ( mags > 17 ) * (mags< 20)
+    mags = mags[m];  chi = chi[m]
     
-    scatter_contour(mags, chi, levels=15, threshold=50, log_counts=True, ax=axis,
+    print('We throw away points with magnitude < 15, so that we are left with %d'%len(chi)+" points")    
+    nlev = 15
+    scatter_contour(mags, chi, levels=nlev, threshold=50, log_counts=True, ax=axis,
                     histogram2d_args=dict(bins=40), 
                     plot_args=dict(marker=' ', linestyle='none', color='black'),
                     contour_args=dict(cmap=plt.cm.jet))
-                  
+                    
+    step = (max(chi)-min(chi)) / nlev
+    print('Colourscale ranges from %f to %f, with 15 levels, i.e. steps every %f '%\
+        (min(chi), max(chi), step) ) 
+        
     rms_robust = lambda x : 0.7414 *(np.percentile(x,75) - np.percentile(x,25))
     rms_std = lambda x : np.std(x)
    
@@ -370,13 +381,14 @@ def print_chi(data_dict, axis):
         rms1_all = binned_statistic(mags, chi, statistic=rms_std, bins=nbins1)
         nbins1 = nbins1 - 2
         diagnostic = np.isnan(rms1_all[0]).sum() 
-    
+    print('For standard deviation we use %d bins' %nbins1)
     nbins2 = 40
     diagnostic = 10
     while  diagnostic > 0 : 
         rms2_all = binned_statistic(mags, chi, statistic=rms_robust, bins=nbins2)
         nbins2 = nbins2 - 2
         diagnostic = np.isnan(rms1_all[0]).sum()
+    print('For robust sigma G we use %d bins' %nbins2)
     
     # Evaluated at the same bins as respective standard deviations... 
     bin_means1 = binned_statistic(mags, chi, statistic = 'mean', bins=nbins1+2)[0]
@@ -400,8 +412,14 @@ def print_chi(data_dict, axis):
           
     axis.set_xlim(xmin=17)
     axis.set_ylim(ymin=-6, ymax=6)
-    axis.set_xlabel('SDSS r mag' )
-    axis.set_ylabel(r'$\chi = \Delta (CRTS \, mag) / (CRTS \, error) $')
+    axis.xaxis.set_label_position('top')
+    axis.xaxis.tick_top()
+    axis.set_xlabel('SDSS g mag' )
+    axis.set_ylabel(r'$\chi $')
+    axis.set_xticks([17,18,19,20])
+    axis.set_xticklabels(['17','18','19','20'])
+ 
+            
     #plt.savefig('test_test_test.png')
     #plt.show()
     #return mags1, mags2, bin_means1, bin_means2, chi_rms1, chi_rms2
@@ -528,27 +546,48 @@ def do_panel_plot(data, mag_min, mag_max, sig, mu, hist_lim, filename, err_facto
                                      mu=mu[i], err_f=err_factor[i] )                             
                                      
         # Plot the histogram    
-        axs[i+1].plot(bins, hist,ls='steps', lw=2, label='data')
+        axs[i+1].plot(bins, hist,ls='steps', lw=2, label='data', color='black')
         axs[i+1].set_xlabel(r'$\Delta m$')
-        axs[i+1].set_ylabel(r'$n(bin) / (N \cdot \Delta (bin))$')
+        axs[i+1].set_ylabel(r'$\mathcal{N}$')
         # Plot  model1
         #model1_lab = r'$ f_{c}=1.0$' # % (sig[i], mu[i])
         #axs[i+1].plot(xgrid, model1, lw=2, label=model1_lab )
         
         # Plot model2
         model2_lab = r'$ f_{c}=%.2f$' %(err_factor[i]) #% (sig[i], mu[i])
-        axs[i+1].plot(xgrid, model2, lw=2, label=model2_lab )
+        axs[i+1].plot(xgrid, model2, lw=3, label=model2_lab, ls='--', color='red' )
     
         # Set x limits
         axs[i+1].set_xlim(xmin=hist_lim[0], xmax=hist_lim[1])
+        axs[i+1].set_ylim(ymin=-0.05)
+        
+        # Set x ticks
+        axs[i+1].set_xticks([-0.5,0,0.5])
+        axs[i+1].set_xticklabels(['-0.5', '0', '0.5'])
+   
         
         # Get y limits  
-        
         ymin, ymax = axs[i+1].get_ylim()
         # Add text saying the limits ... 
-        axs[i+1].text(0.1, 0.75*ymax, r'$%.1f < m < %.1f$'%(mag_min[i], mag_max[i]), fontsize=20)     
+        axs[i+1].text(0.1, 0.75*ymax, r'$%.1f - %.1f$'%(mag_min[i], mag_max[i]))     
         
+        # For the 17 < m < 18 plot (upper-right), and 
+        # For the 18.5 < m < 19 plot (lower-righ), 
+        # move ticklabels to the right
+        
+        if i==0 or i==2 : 
+            axs[i+1].yaxis.tick_right()             
+            axs[i+1].yaxis.set_label_position('right')
+            axs[i+1].yaxis.set_ticks_position('both')
+            
+        # For 17 - 18 plot move the xlabels to the top
+            
+        if i==0 : 
+            axs[i+1].xaxis.set_label_position('top')
+            axs[i+1].xaxis.tick_top()
+            
     #lgd =  plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))   
+    fig.subplots_adjust(hspace=0.1, wspace=0.1)       
     plt.savefig(filename+'_sample_panels.png') #,
 #                bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.show()
@@ -570,8 +609,8 @@ qso_sig = [0.0997, 0.10456, 0.15105]
 qso_mu = [-0.00097, -0.00033, -0.00254]
 starB_sig = [0,0,0, 0]
 starB_mu = [0,0, 0]
-hist_qso = [-1.0,1.0]
-hist_starB = [-1.0,1.0]
+hist_qso = [-0.6,0.6]
+hist_starB = [-0.6,0.6]
 
 # Set the error factor for the plots ...
 #err_inc = 0.72
@@ -588,6 +627,6 @@ starB_rMag = read_file('StarB_g')
 
 #do_panel_plot(QSO, mag_min, mag_max, qso_sig, qso_mu, hist_qso, 'new_QSO', err_inc)
 #do_panel_plot(QSO,mag_min, mag_max, qso_sigma_list, qso_mu, 
-#              hist_starB, 'aaa_QSO', err_factor )
+#              hist_starB, 'NEW_QSO', err_factor )
 do_panel_plot(starB_rMag,mag_min, mag_max, star_sigma_list, starB_mu, 
-              hist_starB, 'aaa_StarB', err_factor )
+              hist_starB, 'NEW_StarB', err_factor )
