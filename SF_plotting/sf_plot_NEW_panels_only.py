@@ -297,16 +297,27 @@ def model_sf(t, sf_inf=0.25, tau = 1.0):
     sf = sf_inf * np.power(br,0.5)
     return sf
 
+def split_bin(array, length):
+    ''' Split an input array into chunks of desired length
+    The chunks will all have the same length, the part that
+    is left (non-divisible by length) will form the last chunk'''
+    
+    length = max(1, length)
+    return [array[i:i + length] for i in range(0, len(array), length)]
 
-def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_factor=1.0 ):
+def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_factor=1.0,save_bin = False ):
     '''
     Create input for sf_plot_panels()
     data : the input data for a given bin, consisting of all del_mag, tau, err per bin
     nbins : number of bins for the entire panel 
     '''    
+    
     delflx = data[0]
     tau = data[1]
     delflxerr = data[2]*err_factor #  for error experiment 
+    
+    
+    
     
     # UNPACK PARAMETERS 
          
@@ -382,6 +393,9 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_facto
     ##### Panel 3 : SF  , Panel 4 : mu_approx   
     #####
     
+    N_bin = [] 
+     
+     
     # Perform the calculation analoguous to AstroML fig. 5.8: 
     #
     # APPROXIMATE WAY 
@@ -396,6 +410,16 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_facto
         for N in np.unique(bin_number):
             xi = delflx[bin_number == N]
             ei = delflxerr[bin_number == N]
+            
+            # store the number of points per bin
+            N_bin.append(len(xi)) 
+            
+            if N == 25 and save_bin == True : 
+                DATA = np.column_stack((xi,ei))
+                outfile = 'QSO_bin_'+str(N)+'_xi_ei.txt'
+                np.savetxt(outfile, DATA, delimiter= ' ', fmt = "%s")            
+                return xi  
+                
             mu_i, sigma_i = approximate_mu_sigma(xi, ei)
             mu_approx.append(mu_i)
             sigma_approx.append(sigma_i)
@@ -418,12 +442,38 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_facto
     if approx == False : 
         SF = []
         mu_plot = []
-        
+       
         # Calculate sigma, mu for each bin 
         for N in np.unique(bin_number):
             xi = delflx[bin_number == N]
             ei = delflxerr[bin_number == N]
-            mu_bin, sigma_bin = get_sigma_mu(xi,ei, approx, y_34)
+            
+            # store the number of points per bin
+            N_bin.append(len(xi)) 
+            
+            
+            if save_bin == True : 
+                DATA = np.column_stack((xi,ei))
+                outfile = 'QSO_bin_'+str(N)+'_xi_ei.txt'
+                np.savetxt(outfile, DATA, delimiter= ' ', fmt = "%s")            
+                return xi           
+                
+            # Split into chunks, calculate mu, sigma per chunk and average 
+            chunk_size = 40000 
+            if len(xi) > chunk_size : 
+                split_xi = split_bin(xi,chunk_size)
+                split_ei = split_bin(ei, chunk_size)
+                mu_chunks, sigma_chunks = [],[]
+                
+                for i in range(len(split_xi)):
+                    mu, sigma = get_sigma_mu(split_xi[i],split_ei[i],approx, y_34)
+                    print('Indiv : mu_chunk =%f and sigma_chunk=%f'%(mu, sigma))
+                    mu_chunks.append(mu) , sigma_chunks.append(sigma)
+                mu_bin, sigma_bin = np.average(mu_chunks), np.average(sigma_chunks)    
+  
+            else:
+                mu_bin, sigma_bin = get_sigma_mu(xi,ei, approx, y_34)
+                
             SF.append(sigma_bin)
             mu_plot.append(mu_bin)
         
@@ -439,9 +489,9 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_facto
     plot_data = {}
     print ' passing on the  plot data...'
     colnames = ['mean_tau', 'bin_stdev', 'err_stdev', 'bin_sigma_G', 'err_sigma_G',
-                'mu_plot', 'SF', 'err_SF', 'err_mu_plot', 'err_median']
+                'mu_plot', 'SF', 'err_SF', 'err_mu_plot', 'err_median', 'N_bin']
     datatable = [mean_tau, bin_stdev, err_stdev, bin_sigma_G, err_sigma_G, 
-                 mu_plot, SF, err_SF, err_mu_plot, err_median]
+                 mu_plot, SF, err_SF, err_mu_plot, err_median, N_bin]
                  
     for label, column in zip(colnames, datatable):
         plot_data[label] = column    
@@ -450,7 +500,8 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_facto
 
 
 def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, 
-                   nbins,  err_factor, approx, y_34,sf_panel_only):  
+                   nbins,  err_factor, approx, y_34,sf_panel_only,save_bin,
+                   multipanel, bin_hist_info):  
     '''
     NEW : instead of sf_plotting, this routine is more versatile, as it 
     calls external function  get_plotted_quantities()  to actually 
@@ -462,7 +513,6 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     '''               
     # Pass on the parameters used in calculating mu, sigma, for all points 
     # across the entire tau range 
-    qso_plot=[]   
 
     mu_sig_generic={}   
     colnames = ['y_34', 'approx']
@@ -483,8 +533,12 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     # CALCULATE PLOTTED QUANTITIES  : QUASARS 
     ############################################## 
         
-    qso_plot  = get_plotted_quantities(qso_data, nbins, mu_sig_sample, mu_sig_generic, err_factor )   
-   
+    qso_plot  = get_plotted_quantities(qso_data, nbins, mu_sig_sample, mu_sig_generic, err_factor, save_bin )  
+    #print qso_plot.keys()
+    #return qso_plot
+    if save_bin == True : 
+        return qso_plot
+    
     # DEFINE HOW MU AND SIGMA IS CALCULATED FOR RED STARS
    
     mu_sig_sample={}
@@ -554,7 +608,20 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     print('SF '+str(N_qso)+' qso, '+str(N_star_b)+' blue, and '+ 
       str(N_star_r)+' red  stars, '+ str(nbins)+  ' bin means')
       
-      
+    ##########################################
+    ######### BIN HIST INFO ##################
+    ##########################################
+    if bin_hist_info == True :  
+        plt.clf()
+        fig, ax = plt.subplots(3,1,  figsize=(12,12))
+        x = np.arange(nbins)
+        ax[0].plot(x, qso_plot['N_bin'], ls='steps', color='black')
+        ax[1].plot(x, star_plot['N_bin'], ls='steps', color='blue')
+        ax[2].plot(x, star_plot1['N_bin'], ls='steps', color='red')  
+        title = 'N_points_per_bin_qso_stars_SF_panel_'+str(nbins)+'_'+str(sample)+'.png'    
+        plt.savefig(title)
+        plt.show()
+        return qso_plot
     ##########################################
     ############ SF PANEL ONLY ###############
     ##########################################   
@@ -576,7 +643,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
         ax.plot(np.log10(xdata), y , lw=3, c = 'orange', ls='--')
         text = r'$ \mathrm{Model:}\ \tau=%.3f \, \mathrm{days} \, , \ SF_{\infty}=%.3f \, \mathrm{mags}$'% \
                  (popt[1],popt[0])
-        ax.text(x=1.0, y=0.3,s = text )
+        ax.text(x=0.75, y=0.3,s = text )
         
         # quasars
         ax.scatter(np.log10(qso_plot['mean_tau']), qso_plot['SF'], s=p_size, 
@@ -609,16 +676,17 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
         ax.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al) 
         ax.set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')
         
-        someX, someY = 0.52, 0.02
-        width, height = 1.2, 0.1
-        ax.add_patch(Rectangle((someX, someY),width , height, edgecolor='red', alpha=0.9, fill=False, lw=4, ls='solid' ))
-        
+        # draw a rectangle ... 
+#        someX, someY = 0.52, 0.02
+#        width, height = 1.2, 0.1
+#        ax.add_patch(Rectangle((someX, someY),width , height, edgecolor='red', alpha=0.9, fill=False, lw=4, ls='solid' ))
+#        
         title = 'SF_panel'+choice+'_'+str(nbins)+'_bins_'+str(sample)+'.png'    
         plt.tight_layout()
         plt.savefig(title)
         plt.show()
     
-    
+        
         return qso_plot
    
    
@@ -627,193 +695,196 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     ############ MULTIPANEL ##################
     ##########################################   
    
-   
-    plt.clf()
-    fig1 = plt.figure(figsize=(12,16)) 
+    if multipanel == True : 
+        plt.clf()
+        fig1 = plt.figure(figsize=(12,16)) 
+        
+        ##########################################
+        ############ Panel 1 #####################
+        ##########################################
+        
+        print 'Plotting Standard Deviation vs Delta t ... '    
+        ax1 = fig1.add_subplot(411)
+        # quasars ...
+        ax1.scatter(np.log10(qso_plot['mean_tau']), qso_plot['bin_stdev'], s=p_size, 
+                    alpha=p_al, c = col1)
+        ax1.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['bin_stdev'],
+                     qso_plot['err_stdev'], linestyle='None', c = col1  )
+                     
+        # blue stars ..         
+        ax1.scatter(np.log10(star_plot['mean_tau']), star_plot['bin_stdev'], s=p_size, 
+                    alpha=p_al, c = col2)
+        ax1.errorbar(np.log10(star_plot['mean_tau']), star_plot['bin_stdev'],
+                     star_plot['err_stdev'], linestyle='None', c = col2  )  
     
-    ##########################################
-    ############ Panel 1 #####################
-    ##########################################
-    
-    print 'Plotting Standard Deviation vs Delta t ... '    
-    ax1 = fig1.add_subplot(411)
-    # quasars ...
-    ax1.scatter(np.log10(qso_plot['mean_tau']), qso_plot['bin_stdev'], s=p_size, 
-                alpha=p_al, c = col1)
-    ax1.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['bin_stdev'],
-                 qso_plot['err_stdev'], linestyle='None', c = col1  )
-                 
-    # blue stars ..         
-    ax1.scatter(np.log10(star_plot['mean_tau']), star_plot['bin_stdev'], s=p_size, 
-                alpha=p_al, c = col2)
-    ax1.errorbar(np.log10(star_plot['mean_tau']), star_plot['bin_stdev'],
-                 star_plot['err_stdev'], linestyle='None', c = col2  )  
-
-    # red stars ..         
-    ax1.scatter(np.log10(star_plot1['mean_tau']), star_plot1['bin_stdev'], s=p_size, 
-                alpha=p_al, c = col3)
-    ax1.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['bin_stdev'],
-                 star_plot1['err_stdev'], linestyle='None', c = col3  )  
-    
+        # red stars ..         
+        ax1.scatter(np.log10(star_plot1['mean_tau']), star_plot1['bin_stdev'], s=p_size, 
+                    alpha=p_al, c = col3)
+        ax1.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['bin_stdev'],
+                     star_plot1['err_stdev'], linestyle='None', c = col3  )  
+        
+             
+        ax1.set_ylabel(r'$\sigma$')  
+        ax1.tick_params( axis='x', which='both',  bottom='off', 
+                        top='off', labelbottom='off') 
+        ax1.set_ylim(bottom=y_bott, top=y_top)
+        ax1.set_xlim(left=x_left, right=x_right)
+        ax1.set_yticks([0,0.1,0.2,0.3,0.4])
+        ax1.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+        ax1.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
+        ax1.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
+        ax1.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
+        ax1.grid(axis='x')
+        # ax1.spines['top'].set_linewidth(0.5)
+     
+        
+        ##########################################
+        ############ Panel 2 #####################
+        ##########################################
+        
+        print 'Plotting sigma_Gaussian  vs Delta t ... '
+        ax2 = fig1.add_subplot(412)
+        
+            
+        # quasars 
+        ax2.scatter(np.log10(qso_plot['mean_tau']), qso_plot['bin_sigma_G'],
+                    s=p_size, alpha=p_al,c = col1)
+        ax2.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['bin_sigma_G'],
+                     qso_plot['err_sigma_G'], linestyle='None',c = col1)
+                     
+        # blue stars 
+        ax2.scatter(np.log10(star_plot['mean_tau']), star_plot['bin_sigma_G'],
+                    s=p_size, alpha=p_al,c = col2)
+        ax2.errorbar(np.log10(star_plot['mean_tau']), star_plot['bin_sigma_G'],
+                     star_plot['err_sigma_G'], linestyle='None',c = col2)
+                     
+        # red stars 
+        ax2.scatter(np.log10(star_plot1['mean_tau']), star_plot1['bin_sigma_G'],
+                    s=p_size, alpha=p_al,c = col3)
+        ax2.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['bin_sigma_G'],
+                     star_plot1['err_sigma_G'], linestyle='None',c = col3)
+                     
+                     
+        ax2.set_ylim(bottom=y_bott, top=y_top)
+        ax2.set_xlim(left=x_left, right=x_right)
+        ax2.set_ylabel(r'$\sigma_{G} $')
+        ax2.tick_params( axis='x', which='both',  bottom='off', 
+                        top='off', labelbottom='off') 
+        ax2.set_yticks([0,0.1,0.2,0.3,0.4])
+        ax2.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+        ax2.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
+        ax2.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
+        ax2.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
+        ax2.grid(axis='x')
+          
+        
+        ##########################################
+        ############ Panel 3 #####################
+        ##########################################
+        
+        print ' Plotting SF vs Delta t... ' 
+        ax3 = fig1.add_subplot(413)
+            
+        # Plot fiducial DRW
+        # Fitting to QSOs , and y-data from panel 3 (SF)
+        # http://stackoverflow.com/questions/26058792/correct-fitting-with-scipy-curve-fit-including-errors-in-x
+            
+        xdata = qso_plot['mean_tau']
+        sf = qso_plot['SF']    
+        popt, pcov = curve_fit(model_sf, xdata, sf)
+        y = model_sf(xdata, sf_inf=popt[0], tau = popt[1]) # tau 1 year in days 
+        
+        # -->  plot the model sigma with error... perhaps use error envelope ?  
+        
+        #err_sig = qso_plot['err_SF']
+        #sf_folded = np.sqrt((y ** 2.0)+ (err_sig ** 2.0) )
+        
+        ax3.plot(np.log10(xdata), y , lw=3, c = 'orange', ls='--')
+        text = r'$ \mathrm{Model:}\ \tau=%.3f \, \mathrm{days} \, , \ SF_{\infty}=%.3f \, \mathrm{mags}$'\
+            %(popt[1],popt[0])
+        ax3.text(x=1.0, y=0.3,s = text )
+        # quasars
+        #return qso_plot
+        ax3.scatter(np.log10(qso_plot['mean_tau']), qso_plot['SF'], s=p_size, 
+                    alpha=p_al,c = col1)
+        ax3.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['SF'], 
+                     qso_plot['err_SF'], linestyle='None',c = col1)
+                     
+        # blue stars 
+        #return star_plot
+        ax3.scatter(np.log10(star_plot['mean_tau']), star_plot['SF'], s=p_size, 
+                    alpha=p_al,c = col2)
+        ax3.errorbar(np.log10(star_plot['mean_tau']), star_plot['SF'], 
+                     star_plot['err_SF'], linestyle='None',c = col2)
+                     
+        # red stars
+        ax3.scatter(np.log10(star_plot1['mean_tau']), star_plot1['SF'], s=p_size, 
+                    alpha=p_al,c = col3)
+        ax3.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['SF'], 
+                     star_plot1['err_SF'], linestyle='None',c = col3)
+                     
+        ax3.set_ylim(bottom=y_bott, top=y_top)
+        ax3.set_xlim(left=x_left, right=x_right)
+        ax3.set_ylabel(r'$SF $')
+        ax3.tick_params( axis='x', which='both',  bottom='off', 
+                        top='off', labelbottom='off')
+        ax3.grid(axis='x')
+        ax3.set_yticks([0,0.1,0.2,0.3,0.4])
+        ax3.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+        ax3.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)    
+        ax3.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
+        ax3.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al) 
+        
          
-    ax1.set_ylabel(r'$\sigma$')  
-    ax1.tick_params( axis='x', which='both',  bottom='off', 
-                    top='off', labelbottom='off') 
-    ax1.set_ylim(bottom=y_bott, top=y_top)
-    ax1.set_xlim(left=x_left, right=x_right)
-    ax1.set_yticks([0,0.1,0.2,0.3,0.4])
-    ax1.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
-    ax1.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax1.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax1.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax1.grid(axis='x')
-    # ax1.spines['top'].set_linewidth(0.5)
- 
-    
-    ##########################################
-    ############ Panel 2 #####################
-    ##########################################
-    
-    print 'Plotting sigma_Gaussian  vs Delta t ... '
-    ax2 = fig1.add_subplot(412)
-    
+        # draw a rectangle ... 
+#        someX, someY = 0.52, 0.02
+#        width, height = 1.2, 0.1
+#        ax3.add_patch(Rectangle((someX, someY),width , height, edgecolor='red', alpha=0.9, fill=False, lw=4, ls='solid' ))
+#            
+            
+        ##########################################
+        ############ Panel 4 #####################
+        ##########################################
         
-    # quasars 
-    ax2.scatter(np.log10(qso_plot['mean_tau']), qso_plot['bin_sigma_G'],
-                s=p_size, alpha=p_al,c = col1)
-    ax2.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['bin_sigma_G'],
-                 qso_plot['err_sigma_G'], linestyle='None',c = col1)
-                 
-    # blue stars 
-    ax2.scatter(np.log10(star_plot['mean_tau']), star_plot['bin_sigma_G'],
-                s=p_size, alpha=p_al,c = col2)
-    ax2.errorbar(np.log10(star_plot['mean_tau']), star_plot['bin_sigma_G'],
-                 star_plot['err_sigma_G'], linestyle='None',c = col2)
-                 
-    # red stars 
-    ax2.scatter(np.log10(star_plot1['mean_tau']), star_plot1['bin_sigma_G'],
-                s=p_size, alpha=p_al,c = col3)
-    ax2.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['bin_sigma_G'],
-                 star_plot1['err_sigma_G'], linestyle='None',c = col3)
-                 
-                 
-    ax2.set_ylim(bottom=y_bott, top=y_top)
-    ax2.set_xlim(left=x_left, right=x_right)
-    ax2.set_ylabel(r'$\sigma_{G} $')
-    ax2.tick_params( axis='x', which='both',  bottom='off', 
-                    top='off', labelbottom='off') 
-    ax2.set_yticks([0,0.1,0.2,0.3,0.4])
-    ax2.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
-    ax2.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax2.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
-    ax2.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st, alpha=lh_al)
-    ax2.grid(axis='x')
-      
-    
-    ##########################################
-    ############ Panel 3 #####################
-    ##########################################
-    
-    print ' Plotting SF vs Delta t... ' 
-    ax3 = fig1.add_subplot(413)
+        ax4 = fig1.add_subplot(414)
         
-    # Plot fiducial DRW
-    # Fitting to QSOs , and y-data from panel 3 (SF)
-    # http://stackoverflow.com/questions/26058792/correct-fitting-with-scipy-curve-fit-including-errors-in-x
+        # quasars 
+        ax4.scatter(np.log10(qso_plot['mean_tau']), qso_plot['mu_plot'],
+                    s=p_size, alpha=p_al,c = col1 )
+        ax4.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['mu_plot'], 
+                     qso_plot['err_mu_plot'], linestyle='None',c = col1)
+                    
+        # blue stars 
+        ax4.scatter(np.log10(star_plot['mean_tau']), star_plot['mu_plot'],
+                    s=p_size, alpha=p_al,c = col2 )
+        ax4.errorbar(np.log10(star_plot['mean_tau']), star_plot['mu_plot'], 
+                     star_plot['err_mu_plot'], linestyle='None',c = col2)
+                     
+        # red stars 
+        ax4.scatter(np.log10(star_plot1['mean_tau']), star_plot1['mu_plot'],
+                    s=p_size, alpha=p_al,c = col3 )
+        ax4.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['mu_plot'], 
+                     star_plot1['err_mu_plot'], linestyle='None',c = col3)
+                     
+                     
+        ax4.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
+        ax4.set_ylim(top=y_mu_top, bottom=y_mu_bott)
+        ax4.set_xlim(left=x_left, right=x_right)
+        ax4.set_yticks([-0.05,0,0.05])
+        ax4.set_yticklabels(['-0.05','0.0', '0.05'])  
+        ax4.set_ylabel(r'$\mu$')
+        ax4.grid(axis='x')
+        ax4.set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')
         
-    xdata = qso_plot['mean_tau']
-    sf = qso_plot['SF']    
-    popt, pcov = curve_fit(model_sf, xdata, sf)
-    y = model_sf(xdata, sf_inf=popt[0], tau = popt[1]) # tau 1 year in days 
-    
-    # -->  plot the model sigma with error... perhaps use error envelope ?  
-    
-    #err_sig = qso_plot['err_SF']
-    #sf_folded = np.sqrt((y ** 2.0)+ (err_sig ** 2.0) )
-    
-    ax3.plot(np.log10(xdata), y , lw=3, c = 'orange', ls='--')
-    text = r'$ \mathrm{Model:}\ \tau=%.3f, \ SF_{\infty}=%.3f \, \mathrm{days}$'%(popt[0],popt[1])
-    ax3.text(x=1.0, y=0.3,s = text )
-    # quasars
-    #return qso_plot
-    ax3.scatter(np.log10(qso_plot['mean_tau']), qso_plot['SF'], s=p_size, 
-                alpha=p_al,c = col1)
-    ax3.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['SF'], 
-                 qso_plot['err_SF'], linestyle='None',c = col1)
-                 
-    # blue stars 
-    #return star_plot
-    ax3.scatter(np.log10(star_plot['mean_tau']), star_plot['SF'], s=p_size, 
-                alpha=p_al,c = col2)
-    ax3.errorbar(np.log10(star_plot['mean_tau']), star_plot['SF'], 
-                 star_plot['err_SF'], linestyle='None',c = col2)
-                 
-    # red stars
-    ax3.scatter(np.log10(star_plot1['mean_tau']), star_plot1['SF'], s=p_size, 
-                alpha=p_al,c = col3)
-    ax3.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['SF'], 
-                 star_plot1['err_SF'], linestyle='None',c = col3)
-                 
-    ax3.set_ylim(bottom=y_bott, top=y_top)
-    ax3.set_xlim(left=x_left, right=x_right)
-    ax3.set_ylabel(r'$SF $')
-    ax3.tick_params( axis='x', which='both',  bottom='off', 
-                    top='off', labelbottom='off')
-    ax3.grid(axis='x')
-    ax3.set_yticks([0,0.1,0.2,0.3,0.4])
-    ax3.set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
-    ax3.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)    
-    ax3.axhline(y=0.1, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax3.axhline(y=0.2, color='black', lw=lh_w, ls=lh_st,alpha=lh_al) 
+        fig1.subplots_adjust(hspace=0)
         
-    someX, someY = 0.52, 0.02
-    width, height = 1.2, 0.1
-    ax3.add_patch(Rectangle((someX, someY),width , height, edgecolor='red', alpha=0.9, fill=False, lw=4, ls='solid' ))
+        title2 = 'SF_'+choice+'_'+str(nbins)+'_bins_'+str(sample)+'.png'    
+        #plt.tight_layout()
+        plt.savefig(title2)
+        plt.show()
+            
         
-        
-    ##########################################
-    ############ Panel 4 #####################
-    ##########################################
-    
-    ax4 = fig1.add_subplot(414)
-    
-    # quasars 
-    ax4.scatter(np.log10(qso_plot['mean_tau']), qso_plot['mu_plot'],
-                s=p_size, alpha=p_al,c = col1 )
-    ax4.errorbar(np.log10(qso_plot['mean_tau']), qso_plot['mu_plot'], 
-                 qso_plot['err_mu_plot'], linestyle='None',c = col1)
-                
-    # blue stars 
-    ax4.scatter(np.log10(star_plot['mean_tau']), star_plot['mu_plot'],
-                s=p_size, alpha=p_al,c = col2 )
-    ax4.errorbar(np.log10(star_plot['mean_tau']), star_plot['mu_plot'], 
-                 star_plot['err_mu_plot'], linestyle='None',c = col2)
-                 
-    # red stars 
-    ax4.scatter(np.log10(star_plot1['mean_tau']), star_plot1['mu_plot'],
-                s=p_size, alpha=p_al,c = col3 )
-    ax4.errorbar(np.log10(star_plot1['mean_tau']), star_plot1['mu_plot'], 
-                 star_plot1['err_mu_plot'], linestyle='None',c = col3)
-                 
-                 
-    ax4.axhline(y=0.0, color='black', lw=lh_w, ls=lh_st,alpha=lh_al)
-    ax4.set_ylim(top=y_mu_top, bottom=y_mu_bott)
-    ax4.set_xlim(left=x_left, right=x_right)
-    ax4.set_yticks([-0.05,0,0.05])
-    ax4.set_yticklabels(['-0.05','0.0', '0.05'])  
-    ax4.set_ylabel(r'$\mu$')
-    ax4.grid(axis='x')
-    ax4.set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')
-    
-    fig1.subplots_adjust(hspace=0)
-    
-    title2 = 'SF_'+choice+'_'+str(nbins)+'_bins_'+str(sample)+'.png'    
-    #plt.tight_layout()
-    plt.savefig(title2)
-    plt.show()
-        
-    
-    return qso_plot
+        return qso_plot
     
 
 
@@ -851,7 +922,8 @@ def add_tau_delflx(masterFiles, inDir, good_ids, i, data):
     
 def plot_panels(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                  good_ids_QSO, choice, nbins=200,  err_factor=1.0,
-                 approx=True, y_34 = 'mode',sf_panel_only=False):
+                 approx=True, y_34 = 'mode',sf_panel_only=False, save_bin=False,
+                 multipanel=True, bin_hist_info=False):
     inDir_S       = inDirStars
     good_ids_S_blue    = good_ids_S_blue
     good_ids_S_red    = good_ids_S_red
@@ -881,7 +953,7 @@ def plot_panels(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
     star_data_red  = [delflx_S, tau_S, err_S, master_acc_list_S]
     qso_data = [delflx_Q, tau_Q, err_Q, master_acc_list_Q]    
     
-    for i in range(len(masterFiles_Q)): 
+    for i in range(len(masterFiles_Q)): #  
         qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
                                   qso_data)
 
@@ -892,7 +964,8 @@ def plot_panels(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                                    star_data_red)                            
                                    
         out = sf_plot_panels(qso_data, star_data_blue, star_data_red,  i, 
-                             choice, nbins, err_factor, approx, y_34,sf_panel_only)
+                             choice, nbins, err_factor, approx, y_34,sf_panel_only, 
+                             save_bin,multipanel, bin_hist_info)
     
     return out, qso_data, star_data_blue, star_data_red
     
@@ -905,12 +978,39 @@ inDirQSO = 'sf_TRY/sf_qso/'
 # Require  Merr < 0.2 mag for quasars and stars ( big error) : same as was done 
 # before 
 
-good_ids_S_blue  = cut_stars(mMax=20, mErrMax = 0.2, gi_Min = -1, gi_Max=1)
-good_ids_S_red = cut_stars(mMax=20, mErrMax = 0.2, gi_Min = 1, gi_Max=3)
-good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.2 , mMax = 20)
+#
+#  Standard run, selecting all objects with SDSS r_mMag < 20  
+#
+good_ids_S_blue  = cut_stars(mMax=19, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+good_ids_S_red = cut_stars(mMax=19, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.3 , mMax = 19)
 
 out, qso, star_b, star_r = plot_panels(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, choice='NEW_1.0E_err_0.2_approx_', nbins=200, 
-                  err_factor=1.0, approx=True, y_34 = 'mode',sf_panel_only=False)
+                  good_ids_QSO, choice='NEW_chunks_1.0E_err_0.3_mode_', nbins=200, 
+                  err_factor=1.0, approx=False, y_34 = 'mode',sf_panel_only=True, save_bin=False,
+                  multipanel=False, bin_hist_info=False)
      
-
+#
+# do an experiment choosing only certain ranges for the plot, i.e. 
+# making narrower SDSS mag cuts      
+#   
+#
+     
+mMin = [17,18,18.5]
+mMax = [18,18.5,19]
+#
+#for i in range(len(mMin)):
+#    Min = mMin[i]
+#    Max = mMax[i]
+#    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+#    
+#    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+#    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+#    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+#    
+#    ch = '_1.0E_err_0.3_approx_mag_'+str(Min)+'-'+str(Max)+'_'
+#    
+#    out, qso, star_b, star_r = plot_panels(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+#                  good_ids_QSO, choice=ch, nbins=200, 
+#                  err_factor=1.0, approx=True, y_34 = 'mode',sf_panel_only=True, save_bin=False,
+#                  multipanel=False, bin_hist_info=False)
