@@ -470,7 +470,7 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic, err_facto
                     print('Indiv : mu_chunk =%f and sigma_chunk=%f'%(mu, sigma))
                     mu_chunks.append(mu) , sigma_chunks.append(sigma)
                 mu_bin, sigma_bin = np.average(mu_chunks), np.average(sigma_chunks)    
-  
+                print('Average : mu_bin =%f and sigma_bin=%f'%(mu_bin, sigma_bin))
             else:
                 mu_bin, sigma_bin = get_sigma_mu(xi,ei, approx, y_34)
                 
@@ -981,12 +981,14 @@ inDirQSO = 'sf_TRY/sf_qso/'
 #
 #  Standard run, selecting all objects with SDSS r_mMag < 20  
 #
-good_ids_S_blue  = cut_stars(mMax=19, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-good_ids_S_red = cut_stars(mMax=19, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.3 , mMax = 19)
+Min = 17
+Max = 19
+good_ids_S_blue  = cut_stars(mMin=Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+good_ids_S_red = cut_stars(mMin=Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.3 ,mMin=Min, mMax=Max)
 
 out, qso, star_b, star_r = plot_panels(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, choice='NEW_chunks_1.0E_err_0.3_mode_', nbins=200, 
+                  good_ids_QSO, choice='TEST_SF_1.0E_err_0.3_mode_', nbins=200, 
                   err_factor=1.0, approx=False, y_34 = 'mode',sf_panel_only=True, save_bin=False,
                   multipanel=False, bin_hist_info=False)
      

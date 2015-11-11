@@ -497,7 +497,7 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin =
     return plot_data
 
 
-def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice, 
+def sf_plot_panels(qso_data,star_data_blue, star_data_red, 
                    nbins,  approx, y_34,sf_panel_only,save_bin,
                    multipanel, bin_hist_info, ax):  
     '''
@@ -912,9 +912,7 @@ def add_tau_delflx(masterFiles, inDir, good_ids, i, data):
     return delflx, tau, err, master_acc_list
     
 def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                 good_ids_QSO, choice, nbins=200,
-                 approx=True, y_34 = 'mode',sf_panel_only=False, save_bin=False,
-                 multipanel=True, bin_hist_info=False, axis=None):
+                 good_ids_QSO):
     inDir_S       = inDirStars
     good_ids_S_blue    = good_ids_S_blue
     good_ids_S_red    = good_ids_S_red
@@ -961,34 +959,101 @@ inDirStars   = 'sf_TRY/sf_stars/'
 inDirQSO = 'sf_TRY/sf_qso/'
 
 
+##############################################################################
+##############################################################################
+##############################################################################
 
+no_corr=  True
+w_corr = False
 
+#
+#  with correction
+#
 
-# Initialize Figure 
+if w_corr == True:
 
-fig,ax = plt.subplots(2,1, figsize=(12,6), sharex=True)
-fig.subplots_adjust(hspace=0)
-axs = ax.ravel()
-
-
-# Part 1 :  17-19 
-
-
-mMin = [17,18,18.5]
-mMax = [18,18.5,19]
-fc = [0.72,0.91,1.07]
-names = ['qso', 'starB', 'starR']
-
-# initialize dict to store all chunks - stitch them together 
-
-a = OrderedDict()
-a['qso'] = [[],[],[]]
-a['starB'] = [[],[],[]] 
-a['starR'] = [[],[],[]] 
-
-for i in range(1): # len(mMin) 
-    Min = mMin[i]
-    Max = mMax[i]
+    # Initialize Figure 
+    
+    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
+    fig.subplots_adjust(hspace=0)
+    axs = ax.ravel()
+    
+    #
+    # Part 1 :  17-19 
+    #
+    
+    mMin = [17,18,18.5]
+    mMax = [18,18.5,19]
+    fc = [1.0,1.0,1.0]
+    names = ['qso', 'starB', 'starR']
+    
+    # initialize dict to store all chunks - stitch them together 
+    
+    a = {}
+    
+    a['qso'] =  [np.empty(0,dtype=float),np.empty(0,dtype=float),
+                np.empty(0,dtype=float),np.empty(0, dtype=str)]
+    a['starB'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
+                np.empty(0,dtype=float),np.empty(0, dtype=str)]
+    a['starR'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
+                np.empty(0,dtype=float),np.empty(0, dtype=str)] 
+    
+    for i in range(len(mMin)): # len(mMin) 
+        Min = mMin[i]
+        Max = mMax[i]
+        print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+        
+        # Select the magnitude range input 
+        good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+        good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+        good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+        
+        
+        # Read in the corresponding xi, ei  lines 
+        # from qso, starB, starR
+        # From all master files 
+        out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                      good_ids_QSO)
+                      
+       
+        # Apply fc to qso, starB, starR, by looping
+        # over the outcome of reading in master xi, ei, tau...
+        for j in range(len(out)) : 
+            xi  = out[j][0]
+            tau = out[j][1]
+            ei  = out[j][2]*fc[i]  # correction factor, 
+            obj = out[j][3]                            # appropriate for mag range chosen
+            
+            # store the corrected xi, ei by appending them
+            # to put all chunks together 
+            a[names[j]][0] = np.append(a[names[j]][0], xi)
+            a[names[j]][1] = np.append(a[names[j]][1], tau)
+            a[names[j]][2] = np.append(a[names[j]][2], ei)
+            a[names[j]][3] = np.append(a[names[j]][3], obj)
+        
+    # print using all master files and all chunks together     
+    pl_1 = sf_plot_panels(a['qso'], a['starB'], a['starR'],  
+                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[0])
+    #
+    # Part 2 :  18.5-19 
+    #
+    # initialize dict to store all chunks - stitch them together 
+    
+    b = OrderedDict()
+    
+    b['qso'] =  [np.empty(0,dtype=float),np.empty(0,dtype=float),
+                np.empty(0,dtype=float),np.empty(0, dtype=str)]
+    b['starB'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
+                np.empty(0,dtype=float),np.empty(0, dtype=str)]
+    b['starR'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
+                np.empty(0,dtype=float),np.empty(0, dtype=str)] 
+    
+    names = ['qso', 'starB', 'starR']
+    Min = 18.5
+    Max = 19
+    fc = 1.00
     print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
     
     # Select the magnitude range input 
@@ -996,43 +1061,115 @@ for i in range(1): # len(mMin)
     good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
     good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
     
-    ch = '_1.0E_err_0.3_approx_mag_'+str(Min)+'-'+str(Max)+'_'
+    # Read in the corresponding xi, ei  lines 
+    # from qso, starB, starR
+    # From all master files 
+    out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO)
+                  
+    # Apply fc to qso, starB, starR, by looping
+    # over the outcome of reading in master xi, ei, tau...
+    for j in range(len(out)) : 
+        xi  = out[j][0]
+        tau = out[j][1]
+        ei  = out[j][2]*fc  # correction factor, 
+        obj = out[j][3]     # appropriate for mag range chosen
+        
+        # put all chunks together 
+        b[names[j]][0] = np.append(b[names[j]][0], xi)
+        b[names[j]][1] = np.append(b[names[j]][1], tau)
+        b[names[j]][2] = np.append(b[names[j]][2], ei)
+        b[names[j]][3] = np.append(b[names[j]][3], obj)
+    
+    # print using all master files and all chunks together     
+    pl_2 = sf_plot_panels(b['qso'], b['starB'], b['starR'],
+                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[1])
+             
+    axs[0].grid(axis='x')
+    axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
+    axs[0].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+    
+    axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
+    
+    ch = 'err_0.3_approx_mag_17-19_18.5-19_corr_fc_1.0_'
+    title = 'TEST_SF_'+ch+'_'+str(200)+'_bins.png'   
+    print 'saved as', title 
+    #plt.tight_layout()
+    plt.savefig(title)
+    plt.show()                     
+
+
+#
+# no correction
+#
+
+# Initialize Figure 
+
+if no_corr == True:
+    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
+    fig.subplots_adjust(hspace=0)
+    axs = ax.ravel()
+    
+    #
+    # Part 1 :  17-19 
+    # initialize dict to store all chunks - stitch them together 
+    #
+    
+    Min = 17
+    Max = 19
+    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    
+    # Select the magnitude range input 
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    
+    # Read in the corresponding xi, ei  lines from all master files 
+    out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO)
+                      
+    # print using all master files and all chunks together     
+    pl_3 = sf_plot_panels(out[0],out[1],out[2],  
+                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[0])
+    #
+    # Part 2 :  18.5-19 
+    #
+    
+    Min = 18.5
+    Max = 19
+    
+    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    
+    # Select the magnitude range input 
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
     
     # Read in the corresponding xi, ei  lines 
     # from qso, starB, starR
     # From all master files 
     out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, choice=ch, nbins=200, 
-                 approx=True, y_34 = 'mode',sf_panel_only=True, save_bin=False,
-                  multipanel=False, bin_hist_info=False, axis = axs[i])
-                  
-    # Apply appropriate correction factor 
-    # and save as a dictionary 
-    new = OrderedDict()
+                  good_ids_QSO)
+                 
+    # print using all master files and all chunks together     
+    pl_4 = sf_plot_panels(out[0],out[1],out[2],
+                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[1])
+             
+    axs[0].grid(axis='x')
+    axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
+    axs[0].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
     
-    for j in range(len(out)) : 
-        xi  = np.array(out[j][0])
-        tau = np.array(out[j][1])
-        ei  = np.array(out[j][2])*fc[i]
-        
-        a[names[j]][0].append(list(xi))
-        a[names[j]][1].append(list(tau))
-        a[names[j]][2].append(list(ei))
-    #  
+    axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-out = sf_plot_panels(a['qso'], a['starB'], a['starR'], i, 
-                             ch, nbins=200, 
-                 approx=True, y_34 = 'mode',sf_panel_only=True, save_bin=False,
-                  multipanel=False, bin_hist_info=False)
-
-              
-axs[i].grid(axis='x')
-axs[i].set_yticks([0,0.1,0.2,0.3,0.4])
-axs[i].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
-
-    
-axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
-title = 'SF_panel'+ch+'_'+str(200)+'_bins_.png'    
-#plt.tight_layout()
-plt.savefig(title)
-plt.show()                     
+    ch = 'err_0.3_mode_mag_17-19_18.5-19_uncorrected'
+    title = 'TEST_SF_'+ch+'_'+str(200)+'_bins.png'   
+    print 'saved as', title 
+    #plt.tight_layout()
+    plt.savefig(title)
+    plt.show()                      
