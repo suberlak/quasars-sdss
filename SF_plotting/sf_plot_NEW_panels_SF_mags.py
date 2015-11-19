@@ -306,7 +306,7 @@ def split_bin(array, length):
     length = max(1, length)
     return [array[i:i + length] for i in range(0, len(array), length)]
 
-def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin = False ):
+def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin = False, bin_range=None ):
     '''
     Create input for sf_plot_panels()
     data : the input data for a given bin, consisting of all del_mag, tau, err per bin
@@ -372,7 +372,7 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin =
     
     bin_stdev = stdev_binned[0][non_empty_bins]  
     bin_number = stdev_binned[2]  
-     # since each point belongs to some bin : len(bin_number) =len(delflx)
+    # since each point belongs to some bin : len(bin_number) =len(delflx)
 
    
     # error on standard deviation in the bin     
@@ -390,7 +390,6 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin =
     #####
     ##### Panel 3 : SF  , Panel 4 : mu_approx   
     #####
-    
     N_bin = [] 
      
      
@@ -412,11 +411,12 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin =
             # store the number of points per bin
             N_bin.append(len(xi)) 
             
-            if N == 25 and save_bin == True : 
+            if  save_bin == True : 
+                print 'Saving bin N=', N
                 DATA = np.column_stack((xi,ei))
-                outfile = 'QSO_bin_'+str(N)+'_xi_ei.txt'
+                outfile = 'QSO_bin_'+str(N)+'_xi_ei'+bin_range+'.txt'
                 np.savetxt(outfile, DATA, delimiter= ' ', fmt = "%s")            
-                return xi  
+               
                 
             mu_i, sigma_i = approximate_mu_sigma(xi, ei)
             mu_approx.append(mu_i)
@@ -452,7 +452,7 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin =
             
             if save_bin == True : 
                 DATA = np.column_stack((xi,ei))
-                outfile = 'QSO_bin_'+str(N)+'_xi_ei.txt'
+                outfile = 'QSO_bin_'+str(N)+'_xi_ei'+bin_range+'.txt'
                 np.savetxt(outfile, DATA, delimiter= ' ', fmt = "%s")            
                 return xi           
                 
@@ -499,7 +499,7 @@ def get_plotted_quantities(data, nbins, mu_sig_sample, mu_sig_generic,save_bin =
 
 def sf_plot_panels(qso_data,star_data_blue, star_data_red, 
                    nbins,  approx, y_34,sf_panel_only,save_bin,
-                   multipanel, bin_hist_info, ax):  
+                   multipanel, bin_hist_info, ax, bin_range):  
     '''
     NEW : instead of sf_plotting, this routine is more versatile, as it 
     calls external function  get_plotted_quantities()  to actually 
@@ -531,7 +531,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red,
     # CALCULATE PLOTTED QUANTITIES  : QUASARS 
     ############################################## 
         
-    qso_plot  = get_plotted_quantities(qso_data, nbins, mu_sig_sample, mu_sig_generic, save_bin )  
+    qso_plot  = get_plotted_quantities(qso_data, nbins, mu_sig_sample, mu_sig_generic, save_bin, bin_range )  
     #print qso_plot.keys()
     #return qso_plot
     if save_bin == True : 
@@ -881,7 +881,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red,
 
 
 # inside the main loop : get tau, delflx from a master file, either qso or star
-def add_tau_delflx(masterFiles, inDir, good_ids, i, data):
+def add_tau_delflx(masterFiles, inDir, good_ids, i, data, fc):
     # read in storage arrays
     delflx = data[0]  
     tau = data[1]
@@ -906,13 +906,17 @@ def add_tau_delflx(masterFiles, inDir, good_ids, i, data):
     # read in tau,  del_mag,  del_mag_err for quasars on the list 
     delflx = np.append(delflx, master[:,0][master_mask].astype(float))
     tau = np.append(tau, master[:,1][master_mask].astype(float))
-    err = np.append(err, master[:,2][master_mask].astype(float))
+    
+    if fc is not None :  # correct new master rows only if  asked for 
+        err = np.append(err, master[:,2][master_mask].astype(float)*fc)
+    else:                # otherwise read in without any correction
+        err = np.append(err, master[:,2][master_mask].astype(float))
     master_acc_list  = np.append(master_acc_list, master_acc)
     
     return delflx, tau, err, master_acc_list
     
 def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                 good_ids_QSO):
+                 good_ids_QSO, xi_ei_data=None, fc=None):
     inDir_S       = inDirStars
     good_ids_S_blue    = good_ids_S_blue
     good_ids_S_red    = good_ids_S_red
@@ -922,35 +926,46 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
     
     # Read the Stellar Master file names 
     masterFiles_S = os.listdir(inDir_S)
-    delflx_S      = np.empty(0,dtype=float)
-    tau_S         = np.empty(0,dtype=float)
-    err_S         = np.empty(0,dtype=float)
-    master_acc_list_S = np.empty(0, dtype=str)
-
     
-    # Read the QSO Master file names 
+     # Read the QSO Master file names 
     masterFiles_Q = os.listdir(inDir_Q)
-    delflx_Q      = np.empty(0,dtype=float)
-    tau_Q         = np.empty(0,dtype=float)
-    err_Q         = np.empty(0,dtype=float)
-    master_acc_list_Q = np.empty(0, dtype=str)
-    
-    # Initialize the data structures to which more and more delta_t and delta_mag
-    # are addded from each consecutive master file 
-    
-    star_data_blue = [delflx_S, tau_S, err_S, master_acc_list_S]
-    star_data_red  = [delflx_S, tau_S, err_S, master_acc_list_S]
-    qso_data = [delflx_Q, tau_Q, err_Q, master_acc_list_Q]    
-    
-    for i in range(1): #  len(masterFiles_Q)
-        qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
-                                  qso_data)
 
+    # If no previous read-in xi, ei exists, initialize arrays    
+    if xi_ei_data is None : 
+        print 'making new delflx, tau, xi arrays'
+        delflx_S      = np.empty(0,dtype=float)
+        tau_S         = np.empty(0,dtype=float)
+        err_S         = np.empty(0,dtype=float)
+        master_acc_list_S = np.empty(0, dtype=str)
+    
+        
+       
+        delflx_Q      = np.empty(0,dtype=float)
+        tau_Q         = np.empty(0,dtype=float)
+        err_Q         = np.empty(0,dtype=float)
+        master_acc_list_Q = np.empty(0, dtype=str)
+        
+        # Initialize the data structures to which more and more delta_t and delta_mag
+        # are addded from each consecutive master file 
+        qso_data = [delflx_Q, tau_Q, err_Q, master_acc_list_Q] 
+        star_data_blue = [delflx_S, tau_S, err_S, master_acc_list_S]
+        star_data_red  = [delflx_S, tau_S, err_S, master_acc_list_S]
+        
+    else:
+        print 'using existing xi ei arrays'
+        qso_data = xi_ei_data[0]
+        star_data_blue = xi_ei_data[1]
+        star_data_red = xi_ei_data[2]
+    
+    for i in range(len(masterFiles_Q)): #  len(masterFiles_Q)
+        qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
+                                  qso_data, fc)
+        print np.shape(qso_data)
         star_data_blue = add_tau_delflx(masterFiles_S, inDir_S, good_ids_S_blue, i, 
-                                   star_data_blue)
+                                   star_data_blue, fc)
         
         star_data_red = add_tau_delflx(masterFiles_S, inDir_S, good_ids_S_red, i, 
-                                   star_data_red)                            
+                                   star_data_red, fc)                            
                                    
     
     return  qso_data, star_data_blue, star_data_red
@@ -963,8 +978,8 @@ inDirQSO = 'sf_TRY/sf_qso/'
 ##############################################################################
 ##############################################################################
 
-no_corr=  True
-w_corr = False
+no_corr= False
+w_corr = True
 
 #
 #  with correction
@@ -984,24 +999,19 @@ if w_corr == True:
     
     mMin = [17,18,18.5]
     mMax = [18,18.5,19]
-    fc = [1.0,1.0,1.0]
+   # fc = [1.0,1.0,1.0]
+    #fc = [0.72, 0.91, 1.07]
+    fc=[1.3,1.3,1.3]
     names = ['qso', 'starB', 'starR']
-    
-    # initialize dict to store all chunks - stitch them together 
-    
-    a = {}
-    
-    a['qso'] =  [np.empty(0,dtype=float),np.empty(0,dtype=float),
-                np.empty(0,dtype=float),np.empty(0, dtype=str)]
-    a['starB'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
-                np.empty(0,dtype=float),np.empty(0, dtype=str)]
-    a['starR'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
-                np.empty(0,dtype=float),np.empty(0, dtype=str)] 
+  
+   
+    out = None
     
     for i in range(len(mMin)): # len(mMin) 
         Min = mMin[i]
         Max = mMax[i]
         print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+        print('\n Using fc=%f' % fc[i])
         
         # Select the magnitude range input 
         good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
@@ -1012,48 +1022,28 @@ if w_corr == True:
         # Read in the corresponding xi, ei  lines 
         # from qso, starB, starR
         # From all master files 
-        out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                      good_ids_QSO)
+        
+        
+        qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                      good_ids_QSO,xi_ei_data=out, fc=fc[i])
                       
-       
-        # Apply fc to qso, starB, starR, by looping
-        # over the outcome of reading in master xi, ei, tau...
-        for j in range(len(out)) : 
-            xi  = out[j][0]
-            tau = out[j][1]
-            ei  = out[j][2]*fc[i]  # correction factor, 
-            obj = out[j][3]                            # appropriate for mag range chosen
-            
-            # store the corrected xi, ei by appending them
-            # to put all chunks together 
-            a[names[j]][0] = np.append(a[names[j]][0], xi)
-            a[names[j]][1] = np.append(a[names[j]][1], tau)
-            a[names[j]][2] = np.append(a[names[j]][2], ei)
-            a[names[j]][3] = np.append(a[names[j]][3], obj)
+      
+        out = [qso, starB, starR]
         
     # print using all master files and all chunks together     
-    pl_1 = sf_plot_panels(a['qso'], a['starB'], a['starR'],  
+    pl_1 = sf_plot_panels(qso,starB,starR,  
                          nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
                          save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[0])
+                         ax=axs[0],bin_range = '17-19')
     #
     # Part 2 :  18.5-19 
     #
-    # initialize dict to store all chunks - stitch them together 
-    
-    b = OrderedDict()
-    
-    b['qso'] =  [np.empty(0,dtype=float),np.empty(0,dtype=float),
-                np.empty(0,dtype=float),np.empty(0, dtype=str)]
-    b['starB'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
-                np.empty(0,dtype=float),np.empty(0, dtype=str)]
-    b['starR'] = [np.empty(0,dtype=float),np.empty(0,dtype=float),
-                np.empty(0,dtype=float),np.empty(0, dtype=str)] 
+   
     
     names = ['qso', 'starB', 'starR']
     Min = 18.5
     Max = 19
-    fc = 1.00
+    fc = 1.3 # 1.07
     print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
     
     # Select the magnitude range input 
@@ -1064,28 +1054,16 @@ if w_corr == True:
     # Read in the corresponding xi, ei  lines 
     # from qso, starB, starR
     # From all master files 
-    out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO)
+    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO,xi_ei_data=None, fc=fc)
                   
-    # Apply fc to qso, starB, starR, by looping
-    # over the outcome of reading in master xi, ei, tau...
-    for j in range(len(out)) : 
-        xi  = out[j][0]
-        tau = out[j][1]
-        ei  = out[j][2]*fc  # correction factor, 
-        obj = out[j][3]     # appropriate for mag range chosen
-        
-        # put all chunks together 
-        b[names[j]][0] = np.append(b[names[j]][0], xi)
-        b[names[j]][1] = np.append(b[names[j]][1], tau)
-        b[names[j]][2] = np.append(b[names[j]][2], ei)
-        b[names[j]][3] = np.append(b[names[j]][3], obj)
+  
     
     # print using all master files and all chunks together     
-    pl_2 = sf_plot_panels(b['qso'], b['starB'], b['starR'],
+    pl_2 = sf_plot_panels(qso, starB, starR,
                          nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
                          save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[1])
+                         ax=axs[1],bin_range = '18.5-19')
              
     axs[0].grid(axis='x')
     axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
@@ -1093,8 +1071,8 @@ if w_corr == True:
     
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-    ch = 'err_0.3_approx_mag_17-19_18.5-19_corr_fc_1.0_'
-    title = 'TEST_SF_'+ch+'_'+str(200)+'_bins.png'   
+    ch = 'err_0.3_approx_mag_17-19_18.5-19_corr_fc_1.3_ALL'
+    title = 'c_TRY_SF_'+ch+'_'+str(200)+'_bins.png'   
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)
@@ -1127,14 +1105,14 @@ if no_corr == True:
     good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
     
     # Read in the corresponding xi, ei  lines from all master files 
-    out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO)
+    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO, xi_ei_data=None, fc=None)
                       
     # print using all master files and all chunks together     
-    pl_3 = sf_plot_panels(out[0],out[1],out[2],  
-                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
+    pl_3 = sf_plot_panels(qso, starB, starR,  
+                         nbins=200, approx=False, y_34 = 'mode', sf_panel_only=True, 
                          save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[0])
+                         ax=axs[0], bin_range = '17-19')
     #
     # Part 2 :  18.5-19 
     #
@@ -1152,14 +1130,14 @@ if no_corr == True:
     # Read in the corresponding xi, ei  lines 
     # from qso, starB, starR
     # From all master files 
-    out = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO)
+    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO, xi_ei_data=None, fc=None)
                  
     # print using all master files and all chunks together     
-    pl_4 = sf_plot_panels(out[0],out[1],out[2],
-                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
+    pl_4 = sf_plot_panels(qso, starB, starR,
+                         nbins=200, approx=False, y_34 = 'mode', sf_panel_only=True, 
                          save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[1])
+                         ax=axs[1], bin_range = '18.5-19')
              
     axs[0].grid(axis='x')
     axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
@@ -1168,7 +1146,7 @@ if no_corr == True:
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
     ch = 'err_0.3_mode_mag_17-19_18.5-19_uncorrected'
-    title = 'TEST_SF_'+ch+'_'+str(200)+'_bins.png'   
+    title = 'b_TRY_SF_'+ch+'_'+str(200)+'_bins.png'   
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)

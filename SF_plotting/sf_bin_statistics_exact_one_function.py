@@ -10,15 +10,23 @@ Based on sf_plot_NEW_panels_only.py
 
 """
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
 
+rcParams['ytick.labelsize'] = 20
+rcParams['xtick.labelsize'] = 20
+rcParams['axes.labelsize'] = 30
+rcParams['axes.linewidth'] = 2
+rcParams['font.size'] = 20
 # Read in xi : delflux and ei : associated error
 # points for bin 1 for CRTS QSO 
-File = 'QSO_bin_1_xi_ei.txt'
-datatable = np.genfromtxt(File)
-
-xi = datatable[:,0]  # data points
-ei = datatable[:,1]  # error points 
-
+def read_file(File):
+    
+    datatable = np.genfromtxt(File)
+    xi = datatable[:,0]  # data points
+    ei = datatable[:,1]  # error points 
+    return xi, ei
+    
 def split_bin(array, length):
     ''' Split an input array into chunks of desired length
     The chunks will all have the same length, the part that
@@ -86,18 +94,46 @@ def p_sigma_mu(xi, ei, mu_s=100, sig_s=40,  sig_lim=[0.00,0.5], mu_lim=[-0.2,0.2
 
 # Split into chunks, calculate mu, sigma per chunk and average 
 chunk_size = 10000 
-split_xi = split_bin(xi,chunk_size)
-split_ei = split_bin(ei, chunk_size)
-mu_chunks, sigma_chunks = [],[]
+print 'Using chunk size = ', chunk_size
+ch_sig = []
+full_sig = []
 
-for i in range(len(split_xi)):
-    mu, sigma = p_sigma_mu(split_xi[i],split_ei[i])
-    print('Indiv : mu_chunk =%f and sigma_chunk=%f'%(mu, sigma))
-    mu_chunks.append(mu) , sigma_chunks.append(sigma)
-mu_bin, sigma_bin = np.average(mu_chunks), np.average(sigma_chunks)    
+bin_max = 200
+
+for i in range(1,bin_max+1):
     
-print('Chunks : mu =%f and sigma=%f'%(mu_bin, sigma_bin))
+    File =  'QSO_bins_17-19_NEW_code/QSO_bin_'+str(i)+'_xi_ei17-19.txt'
+    print '\nFor bin N=', i, ' bin size='
+    xi, ei= read_file(File)
+    
+    split_xi = split_bin(xi,chunk_size)
+    split_ei = split_bin(ei, chunk_size)
+    mu_chunks, sigma_chunks = [],[]
+    
+    for i in range(len(split_xi)):
+        mu, sigma = p_sigma_mu(split_xi[i],split_ei[i])
+        # print('Indiv : mu_chunk =%f and sigma_chunk=%f'%(mu, sigma))
+        mu_chunks.append(mu) , sigma_chunks.append(sigma)
+    mu_bin, sigma_bin = np.average(mu_chunks), np.average(sigma_chunks)    
+    ch_sig.append(sigma_bin)    
+    print('Chunks : mu =%f and sigma=%f'%(mu_bin, sigma_bin))
+    
+    # Do the calculation on the entire bin in one go 
+    mu_bin, sigma_bin = p_sigma_mu(xi,ei)
+    full_sig.append(sigma_bin)
+    print('Full  : mu =%f and sigma=%f'%(mu_bin, sigma_bin))
+    
+fig = plt.figure(figsize=(12,4))
+ax = fig.add_subplot(111)
+#fig.subplots_adjust(hspace=0)
+#ax = axs.ravel()
 
-# Do the calculation on the entire bin in one go 
-mu_bin, sigma_bin = p_sigma_mu(xi,ei)
-print('Full  : mu =%f and sigma=%f'%(mu_bin, sigma_bin))
+x = np.arange(1,bin_max+1)
+ax.set_ylabel(r'SF ($=\sigma$)')
+ax.set_xlabel('Bin number')
+ax.plot(x,ch_sig, label='chunks', lw=2)
+ax.plot(x,full_sig, label='full', lw=2)
+ax.legend(framealpha=0.7, loc = 'upper left')
+title = 'QSO_mags_17-19_err_0.3_no_corr_bins_1-'+str(bin_max)+'.png'
+plt.savefig(title)
+

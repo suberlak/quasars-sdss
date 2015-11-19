@@ -981,15 +981,15 @@ inDirQSO = 'sf_TRY/sf_qso/'
 #
 #  Standard run, selecting all objects with SDSS r_mMag < 20  
 #
-Min = 17
+Min = 10
 Max = 19
 good_ids_S_blue  = cut_stars(mMin=Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
 good_ids_S_red = cut_stars(mMin=Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
 good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.3 ,mMin=Min, mMax=Max)
 
 out, qso, star_b, star_r = plot_panels(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, choice='TEST_SF_1.0E_err_0.3_mode_', nbins=200, 
-                  err_factor=1.0, approx=False, y_34 = 'mode',sf_panel_only=True, save_bin=False,
+                  good_ids_QSO, choice='e_TEST_SF_1.0E_err_0.3_approx_', nbins=200, 
+                  err_factor=1.0, approx=True, y_34 = 'mode',sf_panel_only=True, save_bin=False,
                   multipanel=False, bin_hist_info=False)
      
 #

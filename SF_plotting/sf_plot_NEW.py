@@ -33,7 +33,7 @@ from astroML.plotting import scatter_contour
 from astroML.stats import median_sigmaG
 import time 
 from matplotlib import rcParams
-rcParams.update({'figure.autolayout': True})
+rcParams.update({'figure.autolayout': False})
 
 ##############################
 # READING IN CATALOG DATA    #
@@ -198,7 +198,7 @@ def get_sigma_mu(xi,ei, approx=True, y_34 = 'mode', return_p = False, return_sig
     # APPROXIMATE WAY 
     #
     if approx == True : 
-        mu_i, sigma_i = approximate_mu_sigma(xi, ei, mu_s=mu_s, sig_s = sig_s)
+        mu_i, sigma_i = approximate_mu_sigma(xi, ei)
         return mu_i, sigma_i
     
     #
@@ -650,7 +650,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red, sample, choice,
     qso_plot=[]   
     'Returning ...' 
     
-    return qso_plot
+    #return qso_plot
     
     mu_sig_generic={}   
     colnames = ['y_34', 'approx']
@@ -1150,7 +1150,7 @@ good_ids_S_red = cut_stars(mMax=20, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
 good_ids_QSO, mask_qso = cut_qso(mErrMax = 0.3 , mMax = 20)
 
 out, qso, star_b, star_r = plot_both_SF(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, choice='1.0Eboth0.3', nbins=200, bins_hist=200,
+                  good_ids_QSO, choice='test_1.0E_0.3_mode', nbins=200, bins_hist=200,
                   err_factor=1.0, approx=True, y_34 = 'mode')
  
 pre = 'Sample_6'          
@@ -1469,7 +1469,7 @@ def pickle_sample(qso=qso, star_b = star_b, star_r = star_r, pre=pre,
         
     return  xi, ei
     
-ah = pickle_sample()   
+#ah = pickle_sample()   
     
 def p_distr_quick(qso=qso):
     
