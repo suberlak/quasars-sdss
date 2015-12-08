@@ -21,7 +21,7 @@ import os
 import numpy as np 
 import matplotlib.pyplot as plt 
 from matplotlib import rcParams
-from collections import OrderedDict 
+
 
 rcParams['ytick.labelsize'] = 25
 rcParams['xtick.labelsize'] = 25
@@ -80,6 +80,8 @@ def get_stars_catalog():
 cols1, qso_cat, qso_names = get_qso_catalog(catalog='DB_QSO') 
 cols2 , star_cat= get_stars_catalog()
 
+# rename the star key so that I could use the same name throughout  
+#star_cat['r'] = star_cat.pop('r_mMed')
 
 # Perform cuts 
 def cut_qso(qso_cat=qso_cat, qso_names=qso_names, mMin=-9, mMax=19, 
@@ -89,9 +91,10 @@ def cut_qso(qso_cat=qso_cat, qso_names=qso_names, mMin=-9, mMax=19,
     mask_err = (qso_cat['CRTS_avg_e'] > mErrMin) * (qso_cat['CRTS_avg_e'] < mErrMax)
     mask = mask_mag * mask_err 
     qso_id = qso_names[mask]
+    qso_rmags = qso_cat['r'][mask]
     print '\n These cuts reduced the number of qso  in the sample from', \
           len(qso_cat['redshift']), ' to ', len(qso_id)
-    return  qso_id, mask 
+    return  qso_id, mask , qso_rmags
 
 def cut_stars(star_cat=star_cat, mMin=-9, mMax=19, mErrMin = -9, 
               mErrMax = 0.3, gi_Min = -1, gi_Max=1  ):
@@ -102,11 +105,12 @@ def cut_stars(star_cat=star_cat, mMin=-9, mMax=19, mErrMin = -9,
     mask_color = (SDSS_gi > gi_Min ) * (SDSS_gi < gi_Max)
     mask = mask_mag * mask_err * mask_color
     star_id_f = star_cat['crts_id'][mask]
+    star_rmags = star_cat['r_mMed'][mask]
     # convert floats to strings without comma and zeros
     star_id = np.array(["{:.0f}".format(name) for name in star_id_f])
     print '\n These cuts reduced the number of stars  in the sample from', \
           len(star_cat['CRTS_M']), ' to ', len(star_id)
-    return  star_id
+    return  star_id, star_rmags
 
 
 ########################
@@ -641,6 +645,8 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red,
         text = r'$ \mathrm{Model:}\ \tau=%.3f \, \mathrm{days} \, , \ SF_{\infty}=%.3f \, \mathrm{mags}$'% \
                  (popt[1],popt[0])
         ax.text(x=0.65, y=0.3,s = text )
+        txt = r'$'+bin_range+'$'
+        ax.text(x=0.65, y=0.2,s = txt )
         
         # quasars
         ax.scatter(np.log10(qso_plot['mean_tau']), qso_plot['SF'], s=p_size, 
@@ -881,55 +887,54 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red,
 
 
 # inside the main loop : get tau, delflx from a master file, either qso or star
-def add_tau_delflx(masterFiles, inDir, good_ids, i, data, fc):
+def add_tau_delflx(File, inDir, data, fc):
     # read in storage arrays
     delflx = data[0]  
     tau = data[1]
     err = data[2]
     master_acc_list = data[3]   
     
+    # grab the object name 
+    master_name = File[3:-4]
+    
     # read in the i-th master file 
-    master =  np.genfromtxt(inDir+masterFiles[i], dtype=str)
-    master_names = master[:,3]
-    unique_names = np.unique(master_names)
-    
-    # choose good rows 
-    mask_unique = np.in1d(unique_names,good_ids)
-    unique_acc = unique_names[mask_unique]
-    master_mask = np.in1d(master_names, unique_acc)
-    
-    # accepted stars / quasars from the master files:
-    master_acc = master_names[master_mask]
-    print '\n We accepted', len(master_acc), ' out of ', len(master_names),\
-    ' rows of master file', i, masterFiles[i]
+    master =  np.genfromtxt(inDir+File, dtype=str)
     
     # read in tau,  del_mag,  del_mag_err for quasars on the list 
-    delflx = np.append(delflx, master[:,0][master_mask].astype(float))
-    tau = np.append(tau, master[:,1][master_mask].astype(float))
+    delflx = np.append(delflx, master[:,0].astype(float))
+    tau = np.append(tau, master[:,1].astype(float))
     
     if fc is not None :  # correct new master rows only if  asked for 
-        err = np.append(err, master[:,2][master_mask].astype(float)*fc)
+        err = np.append(err, master[:,2].astype(float)*fc)
     else:                # otherwise read in without any correction
-        err = np.append(err, master[:,2][master_mask].astype(float))
-    master_acc_list  = np.append(master_acc_list, master_acc)
+        err = np.append(err, master[:,2].astype(float))
+    master_names  = np.append(master_acc_list, np.array(len(master[:,0])*[master_name]))
     
-    return delflx, tau, err, master_acc_list
+    return delflx, tau, err, master_names
     
 def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                  good_ids_QSO, xi_ei_data=None, fc=None):
-    inDir_S       =      inDirStars
+                     
+    inDir_S       = inDirStars
     good_ids_S_blue    = good_ids_S_blue
     good_ids_S_red    = good_ids_S_red
     inDir_Q       = inDirQSO
-    good_ids_Q    = good_ids_QSO
-    
+      
     
     # Read the Stellar Master file names 
     masterFiles_S = os.listdir(inDir_S)
+    masterFilesS1 = [name[3:-4] for name in masterFiles_S]
+    
+    good_masterSB = np.array(masterFiles_S)[np.in1d(masterFilesS1, good_ids_S_blue)]
+    good_masterSR = np.array(masterFiles_S)[np.in1d(masterFilesS1, good_ids_S_red)]
     
      # Read the QSO Master file names 
     masterFiles_Q = os.listdir(inDir_Q)
+    masterFilesQ1 = [name[3:-4] for name in masterFiles_Q]
+    good_masterQ = np.array(masterFiles_Q)[np.in1d(masterFilesQ1, good_ids_QSO)]
+    
 
+  
     # If no previous read-in xi, ei exists, initialize arrays    
     if xi_ei_data is None : 
         print 'making new delflx, tau, xi arrays'
@@ -956,198 +961,157 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
         qso_data = xi_ei_data[0]
         star_data_blue = xi_ei_data[1]
         star_data_red = xi_ei_data[2]
-    
-    for i in range(len(masterFiles_Q)): #  len(masterFiles_Q)
-        qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
-                                  qso_data, fc)
-        print np.shape(qso_data)
-        star_data_blue = add_tau_delflx(masterFiles_S, inDir_S, good_ids_S_blue, i, 
-                                   star_data_blue, fc)
         
-        star_data_red = add_tau_delflx(masterFiles_S, inDir_S, good_ids_S_red, i, 
-                                   star_data_red, fc)                            
-                                   
+    print('\n')
+    c = 0
+    for File in good_masterQ: #  len(masterFiles_Q)
+        #print 'Reading in ', File
+        
+        qso_data = add_tau_delflx(File,inDir_Q, qso_data, fc)
+        c += 1 
+        if c % 5 == 0:
+            pers = (100.0*c) / float(len(good_masterQ))
+            print('\r----- Already read %d%% of qso'%pers),
     
+    print('\n')
+    c = 0                   
+    for File in good_masterSB[:len(good_masterQ)]:    
+        #print 'Reading in ', File
+        star_data_blue = add_tau_delflx(File, inDir_S,star_data_blue, fc)
+        c += 1 
+        if c % 5 == 0:
+            pers = (100.0*c) / float(len(good_masterQ))
+            print('\r----- Already read %d%% of Blue Stars'%pers),  
+    print('\n')
+    c = 0                         
+    for File in good_masterSR[:len(good_masterQ)]:  
+        #print 'Reading in ', File
+        star_data_red = add_tau_delflx(File, inDir_S, star_data_red, fc)      
+        c += 1               
+        if c % 5 == 0:
+            pers = (100.0*c) / float(len(good_masterQ))
+            print('\r----- Already read %d%% of Red Stars'%pers),          
+                     
+    print('returning xi, ei for ... %d objects'%len(good_masterQ))
+                            
     return  qso_data, star_data_blue, star_data_red
     
-inDirStars   = 'sf_TRY/sf_stars/'
-inDirQSO = 'sf_TRY/sf_qso/'
+inDirStars   = 'sf_file_per_LC/star/'
+inDirQSO = 'sf_file_per_LC/qso/'
 
 
 ##############################################################################
 ##############################################################################
 ##############################################################################
 
-no_corr= False
-w_corr = True
 
-#
-#  with correction
+
+# First part :  17-18
 #
 
-if w_corr == True:
+Min = 0
+Max = 20
+   
+print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
 
-    # Initialize Figure 
-    
-    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
-    fig.subplots_adjust(hspace=0)
-    axs = ax.ravel()
-    
-    #
-    # Part 1 :  17-19 
-    #
-    
-    mMin = [17,18,18.5]
-    mMax = [18,18.5,19]
-   # fc = [1.0,1.0,1.0]
-    #fc = [0.72, 0.91, 1.07]
-    fc=[1.3,1.3,1.3]
-    names = ['qso', 'starB', 'starR']
-  
-   
-    out = None
-    
-    for i in range(len(mMin)): # len(mMin) 
-        Min = mMin[i]
-        Max = mMax[i]
-        print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
-        print('\n Using fc=%f' % fc[i])
-        
-        # Select the magnitude range input 
-        good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-        good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-        good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
-        
-        
-        # Read in the corresponding xi, ei  lines 
-        # from qso, starB, starR
-        # From all master files 
-        
-        
-        qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                      good_ids_QSO,xi_ei_data=out, fc=fc[i])
-                      
-      
-        out = [qso, starB, starR]
-        
-    # print using all master files and all chunks together     
-    pl_1 = sf_plot_panels(qso,starB,starR,  
-                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
-                         save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[0],bin_range = '17-19')
-    #
-    # Part 2 :  18.5-19 
-    #
-   
-    
-    names = ['qso', 'starB', 'starR']
-    Min = 18.5
-    Max = 19
-    fc = 1.3 # 1.07
-    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
-    
-    # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
-    
-    # Read in the corresponding xi, ei  lines 
-    # from qso, starB, starR
-    # From all master files 
+
+# Select the magnitude range input 
+cut_mags = True
+if cut_mags == True:
+    good_ids_S_blue, S_blue_rmags  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+    good_ids_S_red, S_red_rmags = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+    good_ids_QSO, mask_qso, qso_rmags = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+
+obj_type = ['qso', 'starB', 'starR' ]
+
+# Read in the master files 
+read_again = True
+if read_again == True : 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO,xi_ei_data=None, fc=fc)
+                  good_ids_QSO,xi_ei_data=None, fc=None)
                   
-  
+    # put into a list to loop over... 
+    out = [qso, starB, starR]
     
-    # print using all master files and all chunks together     
-    pl_2 = sf_plot_panels(qso, starB, starR,
-                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
-                         save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[1],bin_range = '18.5-19')
-             
-    axs[0].grid(axis='x')
-    axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
-    axs[0].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
-    
-    axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
-    
-    ch = 'err_0.3_approx_mag_17-19_18.5-19_corr_fc_1.3_ALL'
-    title = 'c_TRY_SF_'+ch+'_'+str(200)+'_bins.png'   
-    print 'saved as', title 
-    #plt.tight_layout()
-    plt.savefig(title)
-    plt.show()                     
+    # Save the output of reading-in the master files...
+    for i in range(len(out)):
+        re = 'All_xi_tau_ei_name_MAG_'+str(Min)+'-'+str(Max)+'_'+obj_type[i]+'_'+str(len(out[i][0]))+'_lines'
+        DATA = np.column_stack((out[i][0],out[i][1],out[i][2],out[i][3] ))
+        np.savetxt(re, DATA, fmt = '%s', delimiter = ' ')
+
+ids = [good_ids_QSO, good_ids_S_blue, good_ids_S_red]
+rmags = [qso_rmags, S_blue_rmags, S_red_rmags]
+   # NOTE : rmags and ids are ordered in the same fashion, and have 
+   # identical lengths 
 
 
-#
-# no correction
-#
 
-# Initialize Figure 
 
-if no_corr == True:
-    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
-    fig.subplots_adjust(hspace=0)
-    axs = ax.ravel()
-    
-    #
-    # Part 1 :  17-19 
-    # initialize dict to store all chunks - stitch them together 
-    #
-    
-    Min = 17
-    Max = 19
-    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
-    
-    # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
-    
-    # Read in the corresponding xi, ei  lines from all master files 
-    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, xi_ei_data=None, fc=None)
-                      
-    # print using all master files and all chunks together     
-    pl_3 = sf_plot_panels(qso, starB, starR,  
-                         nbins=200, approx=False, y_34 = 'mode', sf_panel_only=True, 
-                         save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[0], bin_range = '17-19')
-    #
-    # Part 2 :  18.5-19 
-    #
-    
-    Min = 18.5
-    Max = 19
-    
-    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
-    
-    # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
-    
-    # Read in the corresponding xi, ei  lines 
-    # from qso, starB, starR
-    # From all master files 
-    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, xi_ei_data=None, fc=None)
-                 
-    # print using all master files and all chunks together     
-    pl_4 = sf_plot_panels(qso, starB, starR,
-                         nbins=200, approx=False, y_34 = 'mode', sf_panel_only=True, 
-                         save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[1], bin_range = '18.5-19')
-             
-    axs[0].grid(axis='x')
-    axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
-    axs[0].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
-    
-    axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
-    
-    ch = 'err_0.3_mode_mag_17-19_18.5-19_uncorrected'
-    title = 'b_TRY_SF_'+ch+'_'+str(200)+'_bins.png'   
-    print 'saved as', title 
-    #plt.tight_layout()
-    plt.savefig(title)
-    plt.show()                      
+
+
+# Select only those that satisfy cuts...
+
+tauMin = [0, 2.3, 3]
+tauMax= [1.7, 2.5, 3.2]
+hist_min = [-1.5, -1.0, -1.0 ]
+hist_max = [1.5, 1.0, 1.0]
+
+for i in range(len(out)): # loop over qso, StarB, StarR 
+    print '\nFor ', obj_type[i]
+    for j in range(len(tauMin)): # loop over selection bins for tau 
+        tau_min = tauMin[j]
+        tau_max = tauMax[j]
+        print('We are selecting a sample for %.1f <log10(tau)< %.1f'%(tau_min, tau_max))    
+        
+        # take vectors from the given object type
+        xi  = out[i][0]
+        tau = out[i][1]
+        ei  = out[i][2]
+        n   = out[i][3]
+        
+        print 'The median error before selection is ', np.median(ei)
+        
+        # make selection
+        xmin = hist_min[i]
+        xmax = hist_max[i]
+        
+        mask_delflx = (xi > xmin) * (xi < xmax)     
+        mask_tau =  (np.log10(tau) > tau_min) * (np.log10(tau)<tau_max)
+        
+        mask = mask_tau * mask_delflx
+        
+        print 'The median error after selection is ', np.median(ei[mask])        
+        
+        # grab names to get magnitudes 
+        names_sample_uniq = np.unique(n[mask])
+        
+        # grab r mags corresponding to names 
+        mask_mags = np.in1d(ids[i], names_sample_uniq)
+        mags_sample = rmags[i][mask_mags]
+        
+        keys = names_sample_uniq   #  unique names in the sample
+        values = mags_sample     # and corresponding rmags 
+        
+        d = dict(zip(keys,values))
+        
+        # make an array of rmags corresponding to the original names 
+        # using the dictionary : we know what mag corresponds to 
+        # which object name, just need to make a new array, 
+        # based on the full list of names 
+        
+        # map mags onto names 
+        mags = [d[key] for key in n[mask]]
+        
+        # save the sample ... 
+        
+        data = np.column_stack((xi[mask], ei[mask], tau[mask], n[mask], mags))
+        dir = '/astro/store/scratch/tmp/suberlak/SF_Samples/'
+        fname = 'Sample_'+obj_type[i]+'_tau_'+str(tau_min)+'-'+str(tau_max)+'_'+ \
+            str(len(mags))+'_lines_'+str(len(names_sample_uniq))+'_objects.txt'
+        print 'In directory', dir
+        print 'Saving the Sample as ', fname    
+        np.savetxt(dir+fname, data, delimiter=' ', fmt = '%s')
+        
+   
+
+ 

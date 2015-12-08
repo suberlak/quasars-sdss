@@ -21,7 +21,7 @@ import os
 import numpy as np 
 import matplotlib.pyplot as plt 
 from matplotlib import rcParams
-from collections import OrderedDict 
+
 
 rcParams['ytick.labelsize'] = 25
 rcParams['xtick.labelsize'] = 25
@@ -641,6 +641,8 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red,
         text = r'$ \mathrm{Model:}\ \tau=%.3f \, \mathrm{days} \, , \ SF_{\infty}=%.3f \, \mathrm{mags}$'% \
                  (popt[1],popt[0])
         ax.text(x=0.65, y=0.3,s = text )
+        txt = r'$'+bin_range+'$'
+        ax.text(x=0.65, y=0.2,s = txt )
         
         # quasars
         ax.scatter(np.log10(qso_plot['mean_tau']), qso_plot['SF'], s=p_size, 
@@ -881,55 +883,54 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red,
 
 
 # inside the main loop : get tau, delflx from a master file, either qso or star
-def add_tau_delflx(masterFiles, inDir, good_ids, i, data, fc):
+def add_tau_delflx(File, inDir, data, fc):
     # read in storage arrays
     delflx = data[0]  
     tau = data[1]
     err = data[2]
     master_acc_list = data[3]   
     
+    # grab the object name 
+    master_name = File[3:-4]
+    
     # read in the i-th master file 
-    master =  np.genfromtxt(inDir+masterFiles[i], dtype=str)
-    master_names = master[:,3]
-    unique_names = np.unique(master_names)
-    
-    # choose good rows 
-    mask_unique = np.in1d(unique_names,good_ids)
-    unique_acc = unique_names[mask_unique]
-    master_mask = np.in1d(master_names, unique_acc)
-    
-    # accepted stars / quasars from the master files:
-    master_acc = master_names[master_mask]
-    print '\n We accepted', len(master_acc), ' out of ', len(master_names),\
-    ' rows of master file', i, masterFiles[i]
+    master =  np.genfromtxt(inDir+File, dtype=str)
     
     # read in tau,  del_mag,  del_mag_err for quasars on the list 
-    delflx = np.append(delflx, master[:,0][master_mask].astype(float))
-    tau = np.append(tau, master[:,1][master_mask].astype(float))
+    delflx = np.append(delflx, master[:,0].astype(float))
+    tau = np.append(tau, master[:,1].astype(float))
     
     if fc is not None :  # correct new master rows only if  asked for 
-        err = np.append(err, master[:,2][master_mask].astype(float)*fc)
+        err = np.append(err, master[:,2].astype(float)*fc)
     else:                # otherwise read in without any correction
-        err = np.append(err, master[:,2][master_mask].astype(float))
-    master_acc_list  = np.append(master_acc_list, master_acc)
+        err = np.append(err, master[:,2].astype(float))
+    master_names  = np.append(master_acc_list, np.array(len(master[:,0])*[master_name]))
     
-    return delflx, tau, err, master_acc_list
+    return delflx, tau, err, master_names
     
 def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                  good_ids_QSO, xi_ei_data=None, fc=None):
-    inDir_S       =      inDirStars
+                     
+    inDir_S       = inDirStars
     good_ids_S_blue    = good_ids_S_blue
     good_ids_S_red    = good_ids_S_red
     inDir_Q       = inDirQSO
-    good_ids_Q    = good_ids_QSO
-    
+      
     
     # Read the Stellar Master file names 
     masterFiles_S = os.listdir(inDir_S)
+    masterFilesS1 = [name[3:-4] for name in masterFiles_S]
+    
+    good_masterSB = np.array(masterFiles_S)[np.in1d(masterFilesS1, good_ids_S_blue)]
+    good_masterSR = np.array(masterFiles_S)[np.in1d(masterFilesS1, good_ids_S_red)]
     
      # Read the QSO Master file names 
     masterFiles_Q = os.listdir(inDir_Q)
+    masterFilesQ1 = [name[3:-4] for name in masterFiles_Q]
+    good_masterQ = np.array(masterFiles_Q)[np.in1d(masterFilesQ1, good_ids_QSO)]
+    
 
+  
     # If no previous read-in xi, ei exists, initialize arrays    
     if xi_ei_data is None : 
         print 'making new delflx, tau, xi arrays'
@@ -957,113 +958,169 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
         star_data_blue = xi_ei_data[1]
         star_data_red = xi_ei_data[2]
     
-    for i in range(len(masterFiles_Q)): #  len(masterFiles_Q)
-        qso_data = add_tau_delflx(masterFiles_Q,inDir_Q, good_ids_Q, i, 
-                                  qso_data, fc)
-        print np.shape(qso_data)
-        star_data_blue = add_tau_delflx(masterFiles_S, inDir_S, good_ids_S_blue, i, 
-                                   star_data_blue, fc)
-        
-        star_data_red = add_tau_delflx(masterFiles_S, inDir_S, good_ids_S_red, i, 
-                                   star_data_red, fc)                            
+    for File in good_masterQ: #  len(masterFiles_Q)
+        #print 'Reading in ', File
+        qso_data = add_tau_delflx(File,inDir_Q, qso_data, fc)
+                                  
+    for File in good_masterSB[:len(good_masterQ)]:    
+        #print 'Reading in ', File
+        star_data_blue = add_tau_delflx(File, inDir_S,star_data_blue, fc)
+                                   
+    for File in good_masterSR[:len(good_masterQ)]:  
+        #print 'Reading in ', File
+        star_data_red = add_tau_delflx(File, inDir_S, star_data_red, fc)                            
                                    
     
     return  qso_data, star_data_blue, star_data_red
     
-inDirStars   = 'sf_TRY/sf_stars/'
-inDirQSO = 'sf_TRY/sf_qso/'
+inDirStars   = 'sf_file_per_LC/star/'
+inDirQSO = 'sf_file_per_LC/qso/'
 
 
 ##############################################################################
 ##############################################################################
 ##############################################################################
 
-no_corr= False
-w_corr = True
+
+# Choose method : approximate or full?  
+use_approx = False
+
+method = 'mode'
+    
+# Choose correction : with or without 
+with_corr = True
+
+# Define names of objects plotted 
+names = ['qso', 'starB', 'starR']
+
+# define panel prefix names...
+
+if use_approx == True:
+    pre  = 'approx'
+    
+if use_approx == False:
+    pre = method
+    
+if with_corr == True:
+    corr = 'corr'
+else : 
+    corr = 'no_corr'
+    
 
 #
 #  with correction
 #
 
-if w_corr == True:
+if with_corr == True:
+    print 'Running calculation with correction factor....'
+        
+    #
+    # First part :  17-18
+    #
+    
+    Min = 17
+    Max = 18
+    fc = 0.72 # 1.3
 
-    # Initialize Figure 
-    
-    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
-    fig.subplots_adjust(hspace=0)
-    axs = ax.ravel()
-    
-    #
-    # Part 1 :  17-19 
-    #
-    
-    mMin = [17,18,18.5]
-    mMax = [18,18.5,19]
-   # fc = [1.0,1.0,1.0]
-    #fc = [0.72, 0.91, 1.07]
-    fc=[1.3,1.3,1.3]
-    names = ['qso', 'starB', 'starR']
-  
    
-    out = None
-    
-    for i in range(len(mMin)): # len(mMin) 
-        Min = mMin[i]
-        Max = mMax[i]
-        print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
-        print('\n Using fc=%f' % fc[i])
-        
-        # Select the magnitude range input 
-        good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-        good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-        good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
-        
-        
-        # Read in the corresponding xi, ei  lines 
-        # from qso, starB, starR
-        # From all master files 
-        
-        
-        qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                      good_ids_QSO,xi_ei_data=out, fc=fc[i])
-                      
-      
-        out = [qso, starB, starR]
-        
-    # print using all master files and all chunks together     
-    pl_1 = sf_plot_panels(qso,starB,starR,  
-                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
-                         save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[0],bin_range = '17-19')
-    #
-    # Part 2 :  18.5-19 
-    #
-   
-    
-    names = ['qso', 'starB', 'starR']
-    Min = 18.5
-    Max = 19
-    fc = 1.3 # 1.07
-    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\n Using fc=%f' % fc)
     
     # Select the magnitude range input 
     good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
     good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
     good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
     
-    # Read in the corresponding xi, ei  lines 
-    # from qso, starB, starR
-    # From all master files 
+    # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
                   good_ids_QSO,xi_ei_data=None, fc=fc)
                   
-  
+    out1 = [qso, starB, starR]
     
-    # print using all master files and all chunks together     
-    pl_2 = sf_plot_panels(qso, starB, starR,
-                         nbins=200, approx=True, y_34 = 'mode', sf_panel_only=True, 
+    #
+    # Second part :  18-18.5
+    #
+    
+    Min = 18
+    Max = 18.5
+    fc = 0.91 # 1.3
+
+    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing fc=%f' % fc)
+    
+    # Select the magnitude range input 
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    
+    # Read in the master files 
+    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO,xi_ei_data=None, fc=fc)
+                  
+    out2 = [qso, starB, starR]
+    
+    #
+    # Third part :  18.5-19
+    #
+    
+    Min = 18.5
+    Max = 19
+    fc = 1.07 #  1.3
+
+    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing fc=%f' % fc)
+    
+    # Select the magnitude range input 
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    
+    # Read in the master files 
+    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO,xi_ei_data=None, fc=fc)
+                  
+    out3 = [qso, starB, starR]
+    
+    
+    # combine 17-18 and 18-18.5   (out 1 and out 2 )
+    # into out 12
+    out12 = [[],[],[]]
+    
+    for i in range(len(out1)):
+        xi  = out1[i][0]
+        tau = out1[i][1]
+        ei  = out1[i][2]
+        n   = out1[i][3]
+        
+        xi  = np.append(xi, out2[i][0])
+        tau = np.append(tau, out2[i][1])
+        ei  = np.append(ei, out2[i][2])
+        n   = np.append(n, out2[i][3])
+        
+        out12[i]= xi,tau, ei,n
+        
+    
+    #  
+    # First set of panels 
+    #
+    range_top = '17-18.5'
+    range_bott = '18.5-19'
+    # Initialize Figure 
+    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
+    fig.subplots_adjust(hspace=0)
+    axs = ax.ravel()
+    
+    # print panel 1, 17-18.5  : out12
+    pl_1 = sf_plot_panels(out12[0],out12[1],out12[2],  
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
                          save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[1],bin_range = '18.5-19')
+                         ax=axs[0],bin_range = range_top)
+                         
+    # print panel 2, 18.5-19 : out3
+    pl_2 = sf_plot_panels(out3[0], out3[1],out3[2],
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[1],bin_range = range_bott)
              
     axs[0].grid(axis='x')
     axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
@@ -1071,73 +1128,167 @@ if w_corr == True:
     
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-    ch = 'err_0.3_approx_mag_17-19_18.5-19_corr_fc_1.3_ALL'
-    title = 'c_TRY_SF_'+ch+'_'+str(200)+'_bins.png'   
+    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
+    title = 'CORR_'+ch+'_'+str(200)+'_bins.png'   
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)
     plt.show()                     
-
-
+    
+    #        
+    # Second set of panels 
+    # 
+    range_top = '17-18'
+    range_bott = '18-18.5'
+    # Initialize Figure 
+    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
+    fig.subplots_adjust(hspace=0)
+    axs = ax.ravel()
+    
+    # print panel 1, 17-18  : out1
+    pl_1 = sf_plot_panels(out1[0],out1[1],out1[2],  
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[0],bin_range = range_top)
+                         
+    # print panel 2, 18-18.5 : out2
+    pl_2 = sf_plot_panels(out2[0], out2[1],out2[2],
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[1],bin_range = range_bott)
+             
+    axs[0].grid(axis='x')
+    axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
+    axs[0].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+    
+    axs[1].set_yticks([0,0.1,0.2,0.3,0.4])
+    axs[1].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+    
+    
+    axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
+    
+    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
+    title = 'CORR_'+ch+'_'+str(200)+'_bins.png'   
+    print 'saved as', title 
+    #plt.tight_layout()
+    plt.savefig(title)
+    plt.show()
+    
 #
 # no correction
 #
 
 # Initialize Figure 
 
-if no_corr == True:
-    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
-    fig.subplots_adjust(hspace=0)
-    axs = ax.ravel()
+if with_corr != True:
     
+    print 'Running calculation without correction factor...' 
     #
-    # Part 1 :  17-19 
-    # initialize dict to store all chunks - stitch them together 
+    # First part :  17-18
     #
     
     Min = 17
-    Max = 19
-    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    Max = 18
+
+   
+    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+
     
     # Select the magnitude range input 
     good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
     good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
     good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
     
-    # Read in the corresponding xi, ei  lines from all master files 
+    # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, xi_ei_data=None, fc=None)
-                      
-    # print using all master files and all chunks together     
-    pl_3 = sf_plot_panels(qso, starB, starR,  
-                         nbins=200, approx=False, y_34 = 'mode', sf_panel_only=True, 
-                         save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[0], bin_range = '17-19')
+                  good_ids_QSO,xi_ei_data=None)
+                  
+    out1 = [qso, starB, starR]
+    
     #
-    # Part 2 :  18.5-19 
+    # Second part :  18-18.5
+    #
+    
+    Min = 18
+    Max = 18.5
+  
+
+    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+  
+    # Select the magnitude range input 
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
+    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    
+    # Read in the master files 
+    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+                  good_ids_QSO,xi_ei_data=None)
+                  
+    out2 = [qso, starB, starR]
+    
+    #
+    # Third part :  18.5-19
     #
     
     Min = 18.5
     Max = 19
-    
-    print('Using now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+
+    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+   
     
     # Select the magnitude range input 
     good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
     good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
     good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
     
-    # Read in the corresponding xi, ei  lines 
-    # from qso, starB, starR
-    # From all master files 
+    # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
-                  good_ids_QSO, xi_ei_data=None, fc=None)
-                 
-    # print using all master files and all chunks together     
-    pl_4 = sf_plot_panels(qso, starB, starR,
-                         nbins=200, approx=False, y_34 = 'mode', sf_panel_only=True, 
+                  good_ids_QSO,xi_ei_data=None)
+                  
+    out3 = [qso, starB, starR]
+    
+    
+    # combine 17-18 and 18-18.5   (out 1 and out 2 )
+    # into out 12
+    out12 = [[],[],[]]
+    
+    for i in range(len(out1)):
+        xi  = out1[i][0]
+        tau = out1[i][1]
+        ei  = out1[i][2]
+        n   = out1[i][3]
+        
+        xi  = np.append(xi, out2[i][0])
+        tau = np.append(tau, out2[i][1])
+        ei  = np.append(ei, out2[i][2])
+        n   = np.append(n, out2[i][3])
+        
+        out12[i]= xi,tau, ei,n
+        
+    
+    #  
+    # First set of panels 
+    #
+    range_top = '17-18.5'
+
+    range_bott = '18.5-19'
+    
+    # Initialize Figure 
+    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
+    fig.subplots_adjust(hspace=0)
+    axs = ax.ravel()
+    
+    # print panel 1, 17-18.5  : out12
+    pl_1 = sf_plot_panels(out12[0],out12[1],out12[2],  
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
                          save_bin=False, multipanel=False, bin_hist_info=False, 
-                         ax=axs[1], bin_range = '18.5-19')
+                         ax=axs[0],bin_range = range_top)
+                         
+    # print panel 2, 18.5-19 : out3
+    pl_2 = sf_plot_panels(out3[0], out3[1],out3[2],
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[1],bin_range = range_bott)
              
     axs[0].grid(axis='x')
     axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
@@ -1145,9 +1296,44 @@ if no_corr == True:
     
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-    ch = 'err_0.3_mode_mag_17-19_18.5-19_uncorrected'
-    title = 'b_TRY_SF_'+ch+'_'+str(200)+'_bins.png'   
+    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
+    title = 'NO_CORR_'+ch+'_'+str(200)+'_bins.png'   
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)
-    plt.show()                      
+    plt.show()                     
+    
+    #        
+    # Second set of panels 
+    # 
+    range_top = '17-18'
+    range_bott = '18-18.5'
+    # Initialize Figure 
+    fig,ax = plt.subplots(2,1, figsize=(12,8), sharex=True)
+    fig.subplots_adjust(hspace=0)
+    axs = ax.ravel()
+    
+    # print panel 1, 17-18  : out1
+    pl_1 = sf_plot_panels(out1[0],out1[1],out1[2],  
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[0],bin_range = range_top)
+                         
+    # print panel 2, 18-18.5 : out2
+    pl_2 = sf_plot_panels(out2[0], out2[1],out2[2],
+                         nbins=200, approx=use_approx, y_34 = method, sf_panel_only=True, 
+                         save_bin=False, multipanel=False, bin_hist_info=False, 
+                         ax=axs[1],bin_range = range_bott)
+             
+    axs[0].grid(axis='x')
+    axs[0].set_yticks([0,0.1,0.2,0.3,0.4])
+    axs[0].set_yticklabels(['0.0','0.1', '0.2', '0.3', '0.4'])
+    
+    axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
+    
+    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
+    title = 'NO_CORR_'+ch+'_'+str(200)+'_bins.png'   
+    print 'saved as', title 
+    #plt.tight_layout()
+    plt.savefig(title)
+    plt.show()
