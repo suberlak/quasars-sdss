@@ -162,7 +162,7 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
     good_masterSB = np.array(masterFiles_S)[np.in1d(masterFilesS1, good_ids_S_blue)]
     good_masterSR = np.array(masterFiles_S)[np.in1d(masterFilesS1, good_ids_S_red)]
     
-     # Read the QSO Master file names 
+    # Read the QSO Master file names 
     masterFiles_Q = os.listdir(inDir_Q)
     masterFilesQ1 = [name[3:-4] for name in masterFiles_Q]
     good_masterQ = np.array(masterFiles_Q)[np.in1d(masterFilesQ1, good_ids_QSO)]
@@ -209,7 +209,7 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
     
     print('\n')
     c = 0                   
-    for File in good_masterSB[:len(good_masterQ)]:    
+    for File in good_masterSB:    # [:len(good_masterQ)]
         #print 'Reading in ', File
         star_data_blue = add_tau_delflx(File, inDir_S,star_data_blue, fc)
         c += 1 
@@ -218,7 +218,7 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
             print('\r----- Already read %d%% of Blue Stars'%pers),  
     print('\n')
     c = 0                         
-    for File in good_masterSR[:len(good_masterQ)]:  
+    for File in good_masterSR:   # [:len(good_masterQ)]
         #print 'Reading in ', File
         star_data_red = add_tau_delflx(File, inDir_S, star_data_red, fc)      
         c += 1               
@@ -240,21 +240,17 @@ inDirQSO = 'sf_file_per_LC/qso/'
 
 
 
-# First part :  17-18
-#
-
-Min = 15
-Max = 16
-cut_mag = 'g_mMed'
-report_mag = 'g_mMed'
-
-print('\nUsing now only lightcurves with SDSS  %f< %s < %f' % (Min, cut_mag, Max))
-print('\n Reporting SDSS %s  '% report_mag)
-
-
 # Select the magnitude range input 
 cut_mags = False
 if cut_mags == True:
+    Min = 15
+    Max = 16
+    cut_mag = 'g_mMed'
+    report_mag = 'g_mMed'
+    
+    print('\nUsing now only lightcurves with SDSS  %f< %s < %f' % (Min, cut_mag, Max))
+    print('\n Reporting SDSS %s  '% report_mag)
+
     good_ids_S_blue, S_blue_mags  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1,
                                                cut_mag=cut_mag, report_mag=report_mag)
     good_ids_S_red, S_red_mags = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3,
@@ -284,35 +280,38 @@ obj_type = ['qso', 'starB', 'starR' ]
 
 
 
-re = 'All_xi_tau_ei_name_cut_mag_'+cut_mag+'_'+str(Min)+'-'+str(Max)+'_' + \
-     obj_type[0]+'.txt'
+
     
+read_from_master = True
+read_from_prev_xi = False
+
 #if not os.path.exists(re) : 
-qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
+if read_from_master == True : 
+    qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
               good_ids_QSO,xi_ei_data=None, fc=None)
           
-# put into a list to loop over... 
-out = [qso, starB, starR]
+    # put into a list to loop over... 
+    out = [qso, starB, starR]
    
 # Save the output of reading-in the master files...
 
-#for i in range(3):   
-#    re = 'All_xi_tau_ei_name_cut_mag_'+cut_mag+'_'+str(Min)+'-'+str(Max)+'_' + \
-#        obj_type[i]+'.txt'
-#    print('\n We are saving delflx, tau, err, master_names')
-#    print('\n We save read-in master files according to this cut as %s' % re )
-#    DATA = np.column_stack((out[i][0],out[i][1],out[i][2],out[i][3] ))
-#    np.savetxt(re, DATA, fmt = '%s', delimiter = ' ')
-#else:
-#    print('\n This exact cut was already used before to read-in master files.')
-#    out = [[],[],[]]
-#    for i in range(3):   
-#        re = 'All_xi_tau_ei_name_cut_mag_'+cut_mag+'_'+str(Min)+'-'+str(Max)+'_'+ \
-#            obj_type[i]+'.txt'
-#        print('\n Reading in xi, tau, ei, name from %s' % re)
-#        data = np.genfromtxt(re, dtype=str)
-#        out[i] = [data[:,0].astype(float), data[:,1].astype(float), data[:,2].astype(float),
-#                 data[:,3]] 
+    for i in range(3):   
+        re = 'All_xi_tau_ei_name_Sample_4_redo_'+obj_type[0]+'.txt'
+        print('\n We are saving delflx, tau, err, master_names')
+        print('\n We save read-in master files according to this cut as %s' % re )
+        DATA = np.column_stack((out[i][0],out[i][1],out[i][2],out[i][3] ))
+        np.savetxt(re, DATA, fmt = '%s', delimiter = ' ')
+
+if read_from_prev_xi == True : 
+    
+    print('\n This exact cut was already used before to read-in master files.')
+    out = [[],[],[]]
+    for i in range(3):   
+        re = 'All_xi_tau_ei_name_Sample_4_redo_'+obj_type[i]+'.txt'
+        print('\n Reading in xi, tau, ei, name from %s' % re)
+        data = np.genfromtxt(re, dtype=str)
+        out[i] = [data[:,0].astype(float), data[:,1].astype(float), data[:,2].astype(float),
+                 data[:,3]] 
 
             
 
@@ -331,10 +330,10 @@ hist_max = [1.5, 1.0, 1.0]
 
 for i in range(len(out)): # loop over qso, StarB, StarR 
     print '\nFor ', obj_type[i]
-    for j in range(len(tauMin)): # loop over selection bins for tau 
+    for j in range(1): # len(tauMin) :  loop over selection bins for tau 
         tau_min = tauMin[j]
         tau_max = tauMax[j]
-        print('We are selecting a sample for %.1f <log10(tau)< %.1f'%(tau_min, tau_max))    
+        print('\nWe are selecting a sample for %.1f <log10(tau)< %.1f'%(tau_min, tau_max))    
         
         # take vectors from the given object type
         xi  = out[i][0]
@@ -342,19 +341,22 @@ for i in range(len(out)): # loop over qso, StarB, StarR
         ei  = out[i][2]
         n   = out[i][3]
         
-        print 'The median error before selection is ', np.median(ei)
-        
+        print 'The median error before any selection is ', np.median(ei)
+        print('Before any cut we have  %d objects'% len(np.unique(n))) 
         # make selection
         xmin = hist_min[i]
         xmax = hist_max[i]
         
-        mask_delflx = (xi > xmin) * (xi < xmax)     
+        mask_delflx = (xi > xmin) * (xi < xmax)  
+        
         mask_tau =  (np.log10(tau) > tau_min) * (np.log10(tau)<tau_max)
+
+        print('After log(tau) cut we have %d objects'% len(np.unique(n[mask_tau])))        
         
         mask = mask_tau * mask_delflx
         
-        print 'The median error after selection is ', np.median(ei[mask])        
-        
+        print 'The median error after tau an outliers selection is ', np.median(ei[mask])        
+        print('After log(tau) cut and cutting outliers we have %d objects'% len(np.unique(n[mask])))
         # grab names to get magnitudes 
         names_sample_uniq = np.unique(n[mask])
         
@@ -378,7 +380,7 @@ for i in range(len(out)): # loop over qso, StarB, StarR
         # save the sample ... 
         
         data = np.column_stack((xi[mask], ei[mask], tau[mask], n[mask], mags))
-        dir = '/astro/store/scratch/tmp/suberlak/SF_Samples/Cut_'+cut_mag+'_report_'+report_mag+'/'
+        dir = '/astro/store/scratch/tmp/suberlak/SF_Samples/Sample_4_redo_try/'
         fname = 'Sample_'+obj_type[i]+'_tau_'+str(tau_min)+'-'+str(tau_max)+'_'+ \
             str(len(mags))+'_lines_'+str(len(names_sample_uniq))+'_objects.txt'
         print 'In directory', dir

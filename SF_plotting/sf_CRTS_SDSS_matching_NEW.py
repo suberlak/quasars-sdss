@@ -11,6 +11,11 @@ New matching program, using astropy  instead of my custom-writen functions
 --> But now I can do it  using astropy built-in modules, which should really save all 
     computational time! 
 
+UPDATE: 2015/12/16
+--> changed the was in which CRTS QSO is matched to DB_QSO, adding another column
+     to the saved CRTS_SDSS_cross_matched_qso_DB_QSO_catalog.txt   : crts_id, 
+    which is the 000453+123443  coordinate that also serves as a  name for CRTS 
+    quasars  .  Now the DB_QSO saving format is %s,  which is easier to code 
 
 """
 
@@ -377,7 +382,15 @@ def match_stars():
 def match_quasars(catalog):
     '''
     For catalog matching need to choose SDSS catalog: 
-    's82drw' or 'DB_QSO' 
+    
+    
+    'DB_QSO'  : DB_QSO_S82.dat, with SDSS ugriz, for 9258 objects
+    'master_QSO' : master database with SDSS-2MASS cross-matched photometry &
+                 errors for 8974 objects
+    's82_drw' : s82_drw*.dat  files, which are very similar to DB_QSO, except 
+              that they quote DRW fitting results for a given SDSS band 
+              photometry (hence 5 s82_drw*  files where '*' = u,g,r,i,z )
+              
     '''
     # load names from CRTS 
     DIR = crts_dirs[0]
@@ -486,6 +499,10 @@ def match_quasars(catalog):
     qso_names_file = 'CRTS_SDSS_cross_matched_qso_names.txt'
     np.savetxt(qso_names_file, crts_qso_names, fmt='%s')
     print '\nSaving the CRTS quasar file names to',   qso_names_file
+    
+    # Make a list of just CRTS QSO id for catalog identification
+    crts_qso_names_radec = [name[4:-4] for name in crts_qso_names]    
+    
     # Save all other measurable quantities for CRTS - SDSS quasars 
     if catalog == 's82drw' : 
         datatable=np.array([avg_mag, avg_err, sdss_qso_data['M_i'][ind], 
@@ -497,13 +514,13 @@ def match_quasars(catalog):
                     'N_rows']
         # NOTE: colnames is read from the right....
     if catalog == 'DB_QSO' :
-        datatable=np.array([avg_mag, avg_err, sdss_qso_data['z'][ind], 
+        datatable=np.array([crts_qso_names_radec, avg_mag, avg_err, sdss_qso_data['z'][ind], 
                           sdss_qso_data['i'][ind], sdss_qso_data['r'][ind],
                           sdss_qso_data['g'][ind], sdss_qso_data['u'][ind], 
                           sdss_qso_data['redshift'][ind], sdss_qso_data['ra'][ind], 
                           sdss_qso_data['dec'][ind], ra_deg_CRTS, dec_deg_CRTS,
                           mjd_span, mjd_uniq_N, N_rows])
-        colnames = ['CRTS_avg_mag','CRTS_avg_err', 'z', 'i', 'r', 'g', 'u', 
+        colnames = ['CRTS_id','CRTS_avg_mag','CRTS_avg_err', 'z', 'i', 'r', 'g', 'u', 
                     'redshift', 'ra_SDSS', 'dec_SDSS', 'ra_CRTS', 'dec_CRTS', 
                     'mjd_span', 'mjd_uniq_N', 'N_rows']
     if catalog == 'master_QSO' :
@@ -559,12 +576,13 @@ def match_quasars(catalog):
             header= header+'{:<10}'.format(key[:10])+' '
 
         #fmt = ['%s', '%.4e', '%10.5f']
-        np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%11.5f'*12+'%6.i'+'%5.i'*2, header=header)
+        # old fmt '%11.5f'*12+'%6.i'+'%5.i'*2
+        np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%s  '*16, header=header)
   
     
     return data_qso_SDSS_CRTS
 
 # Call all the necessary functions
 #SDSS_idx, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data  = match_stars() 
-#crts = match_quasars(catalog='master_QSO')  # or 'master_qso',  's82drw'
-match_stars()
+crts = match_quasars(catalog='DB_QSO')  # or 'master_qso',  's82drw'
+#match_stars()
