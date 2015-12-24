@@ -83,20 +83,20 @@ cols2 , star_cat= get_stars_catalog()
 
 # Perform cuts 
 def cut_qso(qso_cat=qso_cat, qso_names=qso_names, mMin=-9, mMax=19, 
-            mErrMin = -9, mErrMax = 0.3):
+            mErrMin = -9, mErrMax = 0.3, cut_mag='r'):
 
-    mask_mag = (qso_cat['r'] > mMin) * (qso_cat['r'] < mMax) 
+    mask_mag = (qso_cat[cut_mag] > mMin) * (qso_cat[cut_mag] < mMax) 
     mask_err = (qso_cat['CRTS_avg_e'] > mErrMin) * (qso_cat['CRTS_avg_e'] < mErrMax)
     mask = mask_mag * mask_err 
     qso_id = qso_names[mask]
     print '\n These cuts reduced the number of qso  in the sample from', \
           len(qso_cat['redshift']), ' to ', len(qso_id)
-    return  qso_id, mask 
+    return  qso_id
 
 def cut_stars(star_cat=star_cat, mMin=-9, mMax=19, mErrMin = -9, 
-              mErrMax = 0.3, gi_Min = -1, gi_Max=1  ):
+              mErrMax = 0.3, gi_Min = -1, gi_Max=1, cut_mag='r_mMed'  ):
 
-    mask_mag = (star_cat['r_mMed'] > mMin) * (star_cat['r_mMed'] < mMax) 
+    mask_mag = (star_cat[cut_mag] > mMin) * (star_cat[cut_mag] < mMax) 
     mask_err = (star_cat['CRTS_Merr'] > mErrMin) * (star_cat['CRTS_Merr'] < mErrMax)
     SDSS_gi = star_cat['g_mMed'] - star_cat['i_mMed']
     mask_color = (SDSS_gi > gi_Min ) * (SDSS_gi < gi_Max)
@@ -676,10 +676,7 @@ def sf_plot_panels(qso_data,star_data_blue, star_data_red,
 #        someX, someY = 0.52, 0.02
 #        width, height = 1.2, 0.1
 #        ax.add_patch(Rectangle((someX, someY),width , height, edgecolor='red', alpha=0.9, fill=False, lw=4, ls='solid' ))
-#        
-        
-    
-        
+  
         return qso_plot
    
    
@@ -957,19 +954,43 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
         qso_data = xi_ei_data[0]
         star_data_blue = xi_ei_data[1]
         star_data_red = xi_ei_data[2]
-    
+   
+    print('\n')
+    c = 0
     for File in good_masterQ: #  len(masterFiles_Q)
         #print 'Reading in ', File
+        
         qso_data = add_tau_delflx(File,inDir_Q, qso_data, fc)
-                                  
-    for File in good_masterSB[:len(good_masterQ)]:    
+        c += 1 
+        if c % 5 == 0:
+            pers = (100.0*c) / float(len(good_masterQ))
+            print('\r----- Already read %d%% of qso'%pers),
+    
+    print('\n')
+    c = 0                   
+    for File in good_masterSB:    # [:len(good_masterQ)]
         #print 'Reading in ', File
         star_data_blue = add_tau_delflx(File, inDir_S,star_data_blue, fc)
-                                   
-    for File in good_masterSR[:len(good_masterQ)]:  
+        c += 1 
+        if c % 5 == 0:
+            pers = (100.0*c) / float(len(good_masterSB))
+            print('\r----- Already read %d%% of Blue Stars'%pers),  
+    print('\n')
+    c = 0                         
+    for File in good_masterSR:   # [:len(good_masterQ)]
         #print 'Reading in ', File
-        star_data_red = add_tau_delflx(File, inDir_S, star_data_red, fc)                            
-                                   
+        star_data_red = add_tau_delflx(File, inDir_S, star_data_red, fc)      
+        c += 1               
+        if c % 5 == 0:
+            pers = (100.0*c) / float(len(good_masterSR))
+            print('\r----- Already read %d%% of Red Stars'%pers),          
+                     
+    print('returning xi, ei for ... %d objects'%len(good_masterQ))
+                            
+    return  qso_data, star_data_blue, star_data_red
+    
+    
+   
     
     return  qso_data, star_data_blue, star_data_red
     
@@ -983,12 +1004,14 @@ inDirQSO = 'sf_file_per_LC/qso/'
 
 
 # Choose method : approximate or full?  
-use_approx = False
-
+use_approx = True
 method = 'mode'
     
 # Choose correction : with or without 
 with_corr = False
+
+# Choose selection magnitude 
+cut_mag = 'r'
 
 # Define names of objects plotted 
 names = ['qso', 'starB', 'starR']
@@ -1027,9 +1050,12 @@ if with_corr == True:
     print('\n Using fc=%f' % fc)
     
     # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, 
+                                 gi_Max=1,cut_mag=cut_mag + '_mMed')
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, 
+                               gi_Max=3, cut_mag=cut_mag + '_mMed')
+    good_ids_QSO = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3, 
+                                     cut_mag = cut_mag)
     
     # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
@@ -1049,9 +1075,12 @@ if with_corr == True:
     print('\nUsing fc=%f' % fc)
     
     # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, 
+                                 gi_Max=1,cut_mag=cut_mag + '_mMed')
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, 
+                               gi_Max=3, cut_mag=cut_mag + '_mMed')
+    good_ids_QSO  = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3, 
+                                     cut_mag = cut_mag)
     
     # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
@@ -1071,9 +1100,12 @@ if with_corr == True:
     print('\nUsing fc=%f' % fc)
     
     # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, 
+                                 gi_Max=1,cut_mag=cut_mag + '_mMed')
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, 
+                               gi_Max=3, cut_mag=cut_mag + '_mMed')
+    good_ids_QSO  = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3, 
+                                     cut_mag = cut_mag)
     
     # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
@@ -1195,9 +1227,12 @@ if with_corr != True:
 
     
     # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, 
+                                gi_Max=1,cut_mag=cut_mag + '_mMed')
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, 
+                               gi_Max=3, cut_mag=cut_mag + '_mMed')
+    good_ids_QSO  = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3, 
+                                     cut_mag = cut_mag)
     
     # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
@@ -1216,9 +1251,12 @@ if with_corr != True:
     print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
   
     # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, 
+                                 gi_Max=1,cut_mag=cut_mag + '_mMed')
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, 
+                               gi_Max=3, cut_mag=cut_mag + '_mMed')
+    good_ids_QSO  = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3, 
+                                     cut_mag = cut_mag)
     
     # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
@@ -1237,9 +1275,12 @@ if with_corr != True:
    
     
     # Select the magnitude range input 
-    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, gi_Max=1)
-    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, gi_Max=3)
-    good_ids_QSO, mask_qso = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3)
+    good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, 
+                                 gi_Max=1,cut_mag=cut_mag + '_mMed')
+    good_ids_S_red = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = 1, 
+                               gi_Max=3, cut_mag=cut_mag + '_mMed')
+    good_ids_QSO  = cut_qso(mMin = Min, mMax=Max, mErrMax = 0.3, 
+                                     cut_mag = cut_mag)
     
     # Read in the master files 
     qso, starB, starR = read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
