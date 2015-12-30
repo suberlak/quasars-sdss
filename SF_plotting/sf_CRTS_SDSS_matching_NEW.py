@@ -227,7 +227,7 @@ def match_catalogs(cat1_ra, cat1_dec, cat2_ra, cat2_dec, archive_file):
 ##############  ACTION  : MATCHING STARS  ############### 
     
     
-def match_stars():
+def match_stars(purge_pickle=True):
     # load names from CRTS
     DIR = crts_dirs[1]
     crts_star_names, crts_star_radec = load_crts_stars(DIR)
@@ -238,7 +238,7 @@ def match_stars():
      
     archive_file='CRTS_stars_LC_params.npz'
     # Check whether this has not been done already :
-    if not os.path.exists(archive_file) :
+    if not os.path.exists(archive_file) or  purge_pickle:
         length= len(crts_star_names)
         print '\n- Computing average mag, err , extracting ra, dec for %i points' % length
         
@@ -250,10 +250,10 @@ def match_stars():
         mjd_span=[]
         mjd_uniq_N=[]
         N_rows= []
-        
+        c=0
         for i in range(length):
             file = str(crts_star_names[i])
-            print '\nCRTS stars file ',i, 'out of',  length
+            #print '\nCRTS stars file ',i, 'out of',  length
             mjd,flx4,err = np.loadtxt(DIR+'%s' % (file),usecols=(0,1,2),unpack=True)
             # 1) Average brightness per LC
             avg_mag.append(np.mean(flx4))
@@ -279,7 +279,13 @@ def match_stars():
             # 7) CRTS  ra and dec for that object 
             name_mask = crts_star_radec['CRTS_ID'] == crts_id_i
             ra_ls.append(crts_star_radec['ra'][name_mask][0])
-            dec_ls.append(crts_star_radec['dec'][name_mask][0])
+            dec_ls.append(crts_star_radec['dec'][name_mask][0])#
+            
+            c += 1 
+            if c % 5 == 0:
+                pers = (100.0*c) / float(length)
+                print('\r----- Already read %d%% of stars '%pers), 
+
         print '\nSaving the results of all LC parameters for CRTS stars to...'
         print archive_file
         np.savez(archive_file, avg_mag=avg_mag, avg_err=avg_err, ra_ls=ra_ls, 
@@ -309,7 +315,7 @@ def match_stars():
     ##########################################################
   
     archive_file_matching = 'CRTS_SDSS_stars_matched_rows_radii.npz'
-    if not os.path.exists(archive_file_matching) :
+    if not os.path.exists(archive_file_matching) or purge_pickle :
         print '\n- Computing the SDSS matching rows to CRTS stars'
           #     Load data from SDSS
         sdss_star_data =  load_sdss_stars()
@@ -379,7 +385,7 @@ def match_stars():
 ##############  ACTION  : MATCHING QUASARS  ############### 
 
     
-def match_quasars(catalog):
+def match_quasars(catalog, purge_pickle=True):
     '''
     For catalog matching need to choose SDSS catalog: 
     
@@ -402,7 +408,7 @@ def match_quasars(catalog):
     # LOOP OVER CRTS QUASARS 
     archive_file='CRTS_qso_LC_params.npz'
     # Check whether this has not been done already :
-    if not os.path.exists(archive_file) :
+    if not os.path.exists(archive_file) or purge_pickle :
         length= len(crts_qso_names)
         print '- Computing average mag, err , extracting ra, dec for %i points' % length
         
@@ -414,9 +420,10 @@ def match_quasars(catalog):
         mjd_uniq_N = []
         N_rows = []        
         
+        c=0
         for i in range(length):
             file = str(crts_qso_names[i])
-            print '\nCRTS quasars file ',i, 'out of',  length
+            #print '\nCRTS quasars file ',i, 'out of',  length
             mjd,flx4,err = np.loadtxt(DIR+'%s' % (file),usecols=(0,1,2),unpack=True)
             
             # 1) Average brightness per LC
@@ -442,6 +449,11 @@ def match_quasars(catalog):
             ra_ls.append(file[4:13])
             dec_ls.append(file[13:-4])
             
+            c += 1 
+            if c % 5 == 0:
+                pers = (100.0*c) / float(length)
+                print('\r----- Already read %d%% of QSO '%pers), 
+
         print '\nSaving the results of all LC parameters for CRTS quasars to...'
         print archive_file   
         np.savez(archive_file, avg_mag=avg_mag, avg_err=avg_err, ra_ls=ra_ls, 
@@ -469,7 +481,7 @@ def match_quasars(catalog):
     # Matching CRTS to SDSS  : which SDSS row corresponds to which CRTS row... 
     archive_file_matching = 'CRTS_SDSS_qso_'+catalog+'_matched_rows.npz'
     
-    if not os.path.exists(archive_file_matching) :
+    if not os.path.exists(archive_file_matching) or purge_pickle :
         print '\n- Computing the SDSS matching rows to CRTS quasars'
         SDSS_matching_rows , matched_radius= match_catalogs(cat1_ra=ra_deg_CRTS, 
                                                             cat1_dec=dec_deg_CRTS, 
@@ -584,5 +596,5 @@ def match_quasars(catalog):
 
 # Call all the necessary functions
 #SDSS_idx, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data  = match_stars() 
-crts = match_quasars(catalog='DB_QSO')  # or 'master_qso',  's82drw'
+crts = match_quasars(catalog='DB_QSO', purge_pickle=True)  # or 'master_qso',  's82drw'
 #match_stars()

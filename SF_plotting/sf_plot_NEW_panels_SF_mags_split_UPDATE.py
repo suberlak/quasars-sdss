@@ -1004,14 +1004,21 @@ inDirQSO = 'sf_file_per_LC/qso/'
 
 
 # Choose method : approximate or full?  
-use_approx = True
+use_approx = False
 method = 'mode'
     
 # Choose correction : with or without 
-with_corr = False
+with_corr = True
 
+# choose correction factors for mag bins 17-18, 18-18.5, 18.5-19 
+
+# those for 'r'
+#fc1,fc2,fc3  = 0.909, 1.142, 1.353
+
+# those for 'g'
+fc1,fc2,fc3  = 0.775, 0.972, 1.142
 # Choose selection magnitude 
-cut_mag = 'r'
+cut_mag = 'g'
 
 # Define names of objects plotted 
 names = ['qso', 'starB', 'starR']
@@ -1043,10 +1050,10 @@ if with_corr == True:
     
     Min = 17
     Max = 18
-    fc = 1.0  # 1.3
+    fc = fc1 # 1.3
 
    
-    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing now only lightcurves with SDSS  %f< %s_mMed < %f' % (Min, cut_mag, Max))
     print('\n Using fc=%f' % fc)
     
     # Select the magnitude range input 
@@ -1069,9 +1076,9 @@ if with_corr == True:
     
     Min = 18
     Max = 18.5
-    fc = 0.91 # 1.3
+    fc = fc2 # 1.3
 
-    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing now only lightcurves with SDSS  %f< %s_mMed < %f' % (Min,cut_mag, Max))
     print('\nUsing fc=%f' % fc)
     
     # Select the magnitude range input 
@@ -1094,9 +1101,9 @@ if with_corr == True:
     
     Min = 18.5
     Max = 19
-    fc = 1.07 #  1.3
+    fc = fc3 #  1.3
 
-    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing now only lightcurves with SDSS  %f< %s_mMed < %f' % (Min, cut_mag, Max))
     print('\nUsing fc=%f' % fc)
     
     # Select the magnitude range input 
@@ -1160,8 +1167,8 @@ if with_corr == True:
     
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
-    title = 'CORR_'+ch+'_'+str(200)+'_bins.png'   
+    ch = pre+'_mag_'+range_top+'_'+range_bott
+    title = cut_mag+'_cut_CORR_'+ch+'_'+str(200)+'_bins.png'   
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)
@@ -1199,8 +1206,10 @@ if with_corr == True:
     
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
-    title = 'CORR_'+ch+'_'+str(200)+'_bins.png'   
+    ch = pre+'_mag_'+range_top+'_'+range_bott
+    title = cut_mag+'_cut_CORR_'+ch+'_'+str(200)+'_bins.png'
+    
+       
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)
@@ -1223,7 +1232,7 @@ if with_corr != True:
     Max = 18
 
    
-    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing now only lightcurves with SDSS  %f< %s_mMed < %f' % (Min,cut_mag, Max))
 
     
     # Select the magnitude range input 
@@ -1248,7 +1257,7 @@ if with_corr != True:
     Max = 18.5
   
 
-    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing now only lightcurves with SDSS  %f< %s_mMed < %f' % (Min, cut_mag,Max))
   
     # Select the magnitude range input 
     good_ids_S_blue  = cut_stars(mMin = Min, mMax=Max, mErrMax = 0.3, gi_Min = -1, 
@@ -1271,7 +1280,7 @@ if with_corr != True:
     Min = 18.5
     Max = 19
 
-    print('\nUsing now only lightcurves with SDSS  %f< r_mMed < %f' % (Min, Max))
+    print('\nUsing now only lightcurves with SDSS  %f< %s_mMed < %f' % (Min,cut_mag, Max))
    
     
     # Select the magnitude range input 
@@ -1337,8 +1346,9 @@ if with_corr != True:
     
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
-    title = 'NO_CORR_'+ch+'_'+str(200)+'_bins.png'   
+    ch = pre+'_mag_'+range_top+'_'+range_bott
+    title = cut_mag+'_cut_NO_CORR_'+ch+'_'+str(200)+'_bins.png'
+    
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)
@@ -1372,8 +1382,10 @@ if with_corr != True:
     
     axs[1].set_xlabel(r'$log_{10} (\Delta _{t})$ [days]')  
     
-    ch = 'err_0.3_'+pre+'_mag_'+range_top+'_'+range_bott+'_'+corr
-    title = 'NO_CORR_'+ch+'_'+str(200)+'_bins.png'   
+    ch = pre+'_mag_'+range_top+'_'+range_bott
+    title = cut_mag+'_cut_NO_CORR_'+ch+'_'+str(200)+'_bins.png'
+    
+    
     print 'saved as', title 
     #plt.tight_layout()
     plt.savefig(title)

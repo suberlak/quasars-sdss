@@ -214,7 +214,7 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
         star_data_blue = add_tau_delflx(File, inDir_S,star_data_blue, fc)
         c += 1 
         if c % 5 == 0:
-            pers = (100.0*c) / float(len(good_masterQ))
+            pers = (100.0*c) / float(len(good_masterSB))
             print('\r----- Already read %d%% of Blue Stars'%pers),  
     print('\n')
     c = 0                         
@@ -223,7 +223,7 @@ def read_xi_ei(inDirStars, good_ids_S_blue, good_ids_S_red, inDirQSO,
         star_data_red = add_tau_delflx(File, inDir_S, star_data_red, fc)      
         c += 1               
         if c % 5 == 0:
-            pers = (100.0*c) / float(len(good_masterQ))
+            pers = (100.0*c) / float(len(good_masterSR))
             print('\r----- Already read %d%% of Red Stars'%pers),          
                      
     print('returning xi, ei for ... %d objects'%len(good_masterQ))
