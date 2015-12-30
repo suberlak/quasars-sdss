@@ -60,11 +60,8 @@ def get_qso_catalog(catalog):
     for label, column in zip(colnames, datatable.T):
         qso_catalog[label] = column
     
-    qso_names = np.genfromtxt('CRTS_SDSS_cross_matched_qso_names.txt', dtype=str)    
-    for i in range(len(qso_names)):
-        qso_names[i] = qso_names[i][4:-4]
     print 'Read in ', len(qso_catalog['redshift']), ', quasars from CRTS'
-    return  colnames, qso_catalog, qso_names
+    return  colnames, qso_catalog
     
 def get_stars_catalog():
     File = 'CRTS_SDSS_cross_matched_stars_catalog.txt'
@@ -77,18 +74,18 @@ def get_stars_catalog():
         
     return  colnames, stars_catalog
 
-cols1, qso_cat, qso_names = get_qso_catalog(catalog='DB_QSO') 
+cols1, qso_cat = get_qso_catalog(catalog='DB_QSO') 
 cols2 , star_cat= get_stars_catalog()
 
 
 # Perform cuts 
-def cut_qso(qso_cat=qso_cat, qso_names=qso_names, mMin=-9, mMax=19, 
+def cut_qso(qso_cat=qso_cat, mMin=-9, mMax=19, 
             mErrMin = -9, mErrMax = 0.3, cut_mag='r'):
 
     mask_mag = (qso_cat[cut_mag] > mMin) * (qso_cat[cut_mag] < mMax) 
     mask_err = (qso_cat['CRTS_avg_e'] > mErrMin) * (qso_cat['CRTS_avg_e'] < mErrMax)
     mask = mask_mag * mask_err 
-    qso_id = qso_names[mask]
+    qso_id = qso_cat['CRTS_id'][mask]
     print '\n These cuts reduced the number of qso  in the sample from', \
           len(qso_cat['redshift']), ' to ', len(qso_id)
     return  qso_id
