@@ -1004,7 +1004,7 @@ inDirQSO = 'sf_file_per_LC/qso/'
 
 
 # Choose method : approximate or full?  
-use_approx = False
+use_approx = True
 method = 'mode'
     
 # Choose correction : with or without 
@@ -1012,11 +1012,13 @@ with_corr = True
 
 # choose correction factors for mag bins 17-18, 18-18.5, 18.5-19 
 
-# those for 'r'
-#fc1,fc2,fc3  = 0.909, 1.142, 1.353
+    # those for 'r'
+    #fc1,fc2,fc3  = 0.909, 1.142, 1.353
+#fc1, fc2, fc3 = 0.863, 1.091, 1.300
 
 # those for 'g'
-fc1,fc2,fc3  = 0.775, 0.972, 1.142
+fc1, fc2, fc3 = 0.721, 0.927, 1.092
+#fc1,fc2,fc3  = 0.775, 0.972, 1.142
 # Choose selection magnitude 
 cut_mag = 'g'
 
