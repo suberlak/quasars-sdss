@@ -112,13 +112,15 @@ for obj in qso_chosen:
         avg_err_weights[i] = error_weights
         avg_err_rms[i] = error_rms
         mjd_arr[i] = np.mean(mjd[condition])
+        
+        # Calculate chi2 of each day 
         #chi2 = np.sum(weights*(np.power((mags[condition]-avgmag),2.0))) 
         #chi2arr[i] = chi2
         # print 'i = ', i, 'On day MJD', day, 'N obs=', N, 'avgmag=', avgmag, \
         # 'avg_err=',error, 'chi2=',chi2
     
     # save output of averaging of each file to a separate file 
-    # only if  more than 10 obs per day 
+    # only if  more than 10 obs total 
     if( len(mjd_arr) >  10 ) :
         name_out1=dir_err_rms+'out_'+obj[:18]+'.txt'
         name_out2 = dir_err_w + 'out_'+obj[:18]+'.txt'
@@ -135,5 +137,7 @@ for obj in qso_chosen:
     print '  '
 
 # Save lists of files 
-np.savetxt(dir_err_w+'out.list',processed_files,delimiter = ' ', newline='\n', fmt='%s' ) 
-np.savetxt(dir_err_rms+'out.list',processed_files,delimiter = ' ', newline='\n', fmt='%s' )
+# not necessary, because now I just select all files in a given dir to be used for plotting
+
+#np.savetxt(dir_err_w+'out.list',processed_files,delimiter = ' ', newline='\n', fmt='%s' ) 
+#np.savetxt(dir_err_rms+'out.list',processed_files,delimiter = ' ', newline='\n', fmt='%s' )
