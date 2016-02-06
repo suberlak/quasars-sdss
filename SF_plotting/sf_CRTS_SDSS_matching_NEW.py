@@ -327,11 +327,15 @@ def match_stars(purge_pickle=True):
                                         match_angle_deg = match_angle_deg)
 
     else:
+        
+        sdss_star_data =  load_sdss_stars()
         print '\n- Using precomputed SDSS rows matched to CRTS stars from'
         print archive_file_matching
         archive =np.load(archive_file_matching)
         SDSS_matching_rows= archive['SDSS_matching_rows']
-        sdss_star_data =  load_sdss_stars()
+        match_angle_deg = archive['match_angle_deg']
+        
+        
     
     ########## SAVE ################
     # Saving a combined cross-matched SDSS-CRTS stars dataset 
@@ -341,10 +345,10 @@ def match_stars(purge_pickle=True):
                          dec_deg_CRTS, ra_deg_CRTS, sdss_star_data['g_Nobs'][ind], 
                         sdss_star_data['g_mMed'][ind], sdss_star_data['r_mMed'][ind],
                         sdss_star_data['i_mMed'][ind],
-                        crts_id, mjd_span, mjd_uniq_N, N_rows ])
+                        crts_id, mjd_span, mjd_uniq_N, N_rows,match_angle_deg ])
     colnames = ['CRTS_M','CRTS_Merr', 'dec_SDSS', 'ra_SDSS', 'dec_CRTS',
                 'ra_CRTS', 'g_Nobs', 'g_mMed','r_mMed', 'i_mMed', 'crts_id', 'mjd_span', 
-                'mjd_N', 'N_rows']
+                'mjd_N', 'N_rows', 'm_ang_deg']
     
 #    colnames = ['calib_fla', 'ra', 'dec', 'raRMS', 'decRMS', 'nEpochs', 'AR_val', 
 #                'u_Nobs', 'u_mMed', 'u_mMean', 'u_mErr', 'u_rms_scatt', 'u_chi2',
@@ -376,7 +380,7 @@ def match_stars(purge_pickle=True):
     np.savetxt(archive_SDSS_CRTS, DATA, delimiter =' ', fmt=fmt[2], header=header)    
     print 'All done with star catalogs, please see: ' , archive_SDSS_CRTS
     
-    return  sdss_star_data 
+    return  sdss_star_data , match_angle_deg
        
     #  fmt='%11.5f'*8+'%6.i'+'%5.i'*2
     
@@ -490,6 +494,7 @@ def match_quasars(catalog, purge_pickle=True):
 
                                                             cat2_dec=sdss_qso_data['dec']) 
         match_angle_deg = np.array([a.value  for a in matched_radius])
+        
         np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows,
                                         match_angle_deg = match_angle_deg)
 
@@ -499,7 +504,7 @@ def match_quasars(catalog, purge_pickle=True):
         print '\n- Using precomputed SDSS rows matched to CRTS quasars from ', archive_file_matching
         archive =np.load(archive_file_matching)
         SDSS_matching_rows = archive['SDSS_matching_rows']
-        
+        match_angle_deg = archive['match_angle_deg']
         
     # Saving a combined cross-matched SDSS-CRTS quasars dataset 
         
@@ -535,10 +540,10 @@ def match_quasars(catalog, purge_pickle=True):
                           sdss_qso_data['g'][ind], sdss_qso_data['u'][ind], 
                           sdss_qso_data['redshift'][ind], sdss_qso_data['ra'][ind], 
                           sdss_qso_data['dec'][ind], ra_deg_CRTS, dec_deg_CRTS,
-                          mjd_span, mjd_uniq_N, N_rows])
+                          mjd_span, mjd_uniq_N, N_rows, match_angle_deg])
         colnames = ['CRTS_id','CRTS_avg_mag','CRTS_avg_err', 'z', 'i', 'r', 'g', 'u', 
                     'redshift', 'ra_SDSS', 'dec_SDSS', 'ra_CRTS', 'dec_CRTS', 
-                    'mjd_span', 'mjd_uniq_N', 'N_rows']
+                    'mjd_span', 'mjd_uniq_N', 'N_rows', 'm_ang_deg']
     if catalog == 'master_QSO' :
         datatable=np.array([avg_mag, avg_err, sdss_qso_data['u'][ind], 
                           sdss_qso_data['err_u'][ind], sdss_qso_data['g'][ind], 
@@ -596,7 +601,7 @@ def match_quasars(catalog, purge_pickle=True):
         np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%s  '*16, header=header)
   
     
-    return data_qso_SDSS_CRTS, matched_radius
+    return data_qso_SDSS_CRTS, match_angle_deg
 
 # Call all the necessary functions
 sdss_star_data  = match_stars(purge_pickle=True) 
