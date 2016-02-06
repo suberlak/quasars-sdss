@@ -36,6 +36,14 @@ files per lightcurve, which should make selection easier - instead of selecting
 lines from master files that correspond to objects satisfying the cut, 
 we select master files for objects that satisfy the cut 
 
+02/03/2016
+A small update in line  75 , changing the stellar input catalog from 
+'../stars_CRTS_proc_err_w_good/'  to '../stars_CRTS_LC_err_w/'
+and   in line 94, so that instead of making SF for all the stars, 
+it will only calculate it for those that are missing between the two 
+directories   ( '../stars_CRTS_proc_err_w_good/'  is the one whereby 
+an incorrect filter was applied to  '../stars_CRTS_processing_err_w/' 
+'../stars_CRTS_LC_err_w/'  is the same as '../stars_CRTS_processing_err_w/' ) 
 
 NOTE : 
 the program can be called   sf_load_NEW.py   inDir  outDir  outRoot  objType
@@ -61,10 +69,10 @@ args = sys.argv
 
 # Read in the LC files  if there is no user input 
 if len(args) == 1 :
-    choice = 'qso'
+    choice = 'star'
 
     if choice == 'star':
-        inDir =  '../stars_CRTS_proc_err_w_good/'
+        inDir =  '../stars_CRTS_LC_err_w/' # '../stars_CRTS_proc_err_w_good/'
        
         start= 4
         end=  -8
@@ -83,7 +91,10 @@ if len(args) == 1 :
 if not os.path.exists(outDir): os.system('mkdir %s' % outDir) 
 
 # Load LC files 
-inFiles = os.listdir(inDir)
+inFiles = np.loadtxt('../missing_stars_err_w_good_vs_err_w.txt', dtype='str')
+          # os.listdir(inDir)  instead of listing the input dir 
+          # use the list of stars that went missing between 
+          # filtering stages, to add them to the pool of single sf files 
 
 file_count = 0
 

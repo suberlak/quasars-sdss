@@ -149,7 +149,7 @@ def load_crts_qso(inDir):
     print '\nI loaded names of ', len(CRTS_qso), ' CRTS quasars'
     return CRTS_qso
 
-crts_dirs = ['../QSO_CRTS_processed_err_w/','../stars_CRTS_proc_err_w_good/']
+crts_dirs = ['../QSO_CRTS_processed_err_w/','../stars_CRTS_LC_err_w/'] #'../stars_CRTS_proc_err_w_good/'
 
 
 ##############################
@@ -324,7 +324,9 @@ def match_stars(purge_pickle=True):
                                                             cat2_ra= sdss_star_data['ra'], 
                                                             cat2_dec=sdss_star_data['dec'], 
                                                             archive_file=archive_file_matching) 
-        np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows)
+        match_angle_deg = np.array([a.value  for a in matched_radius])
+        np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows,
+                                        match_angle_deg = match_angle_deg)
     else:
         print '\n- Using precomputed SDSS rows matched to CRTS stars from'
         print archive_file_matching
@@ -375,7 +377,7 @@ def match_stars(purge_pickle=True):
     np.savetxt(archive_SDSS_CRTS, DATA, delimiter =' ', fmt=fmt[2], header=header)    
     print 'All done with star catalogs, please see: ' , archive_SDSS_CRTS
     
-    return SDSS_matching_rows, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data 
+    return  sdss_star_data 
        
     #  fmt='%11.5f'*8+'%6.i'+'%5.i'*2
     
@@ -488,7 +490,9 @@ def match_quasars(catalog, purge_pickle=True):
                                                             cat2_ra= sdss_qso_data['ra'], 
                                                             cat2_dec=sdss_qso_data['dec'], 
                                                             archive_file=archive_file_matching) 
-        np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows)
+        match_angle_deg = np.array([a.value  for a in matched_radius])
+        np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows,
+                                        match_angle_deg = match_angle_deg)
         print '\n- Saved the SDSS-CRTS quasars matched rows to ', archive_file_matching
    
     else:
@@ -592,9 +596,9 @@ def match_quasars(catalog, purge_pickle=True):
         np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%s  '*16, header=header)
   
     
-    return data_qso_SDSS_CRTS
+    return data_qso_SDSS_CRTS, matched_radius
 
 # Call all the necessary functions
-#SDSS_idx, ra_deg_CRTS, dec_deg_CRTS, avg_mag, avg_err, sdss_star_data  = match_stars() 
-crts = match_quasars(catalog='DB_QSO', purge_pickle=True)  # or 'master_qso',  's82drw'
-#match_stars()
+sdss_star_data  = match_stars(purge_pickle=True) 
+crts, radi = match_quasars(catalog='DB_QSO', purge_pickle=True)  # or 'master_qso',  's82drw'
+
