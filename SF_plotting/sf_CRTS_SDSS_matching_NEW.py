@@ -120,21 +120,20 @@ def load_sdss_qso(catalog = 'DB_QSO'):
 
 def load_crts_stars(inDir):
     # load names of stars 
-    inFiles = os.listdir(inDir)
-    CRTS_star_names = np.loadtxt(inFiles, dtype= str)
+    crts_star_names = np.array(os.listdir(inDir))
     
-    print '\nI loaded names of ', len(CRTS_star_names), ' CRTS stars'
+    print '\nI loaded names of ', len(crts_star_names), ' CRTS stars'
     
     # load ra dec info for matching...
     File = 'radec.00'
-    CRTS_star_radec_table= np.genfromtxt(File)
+    crts_star_radec_table= np.genfromtxt(File)
     colnames = ['CRTS_ID', 'ra', 'dec']
     
-    CRTS_star_radec = {}
-    for label, column in zip(colnames, CRTS_star_radec_table.T):
-        CRTS_star_radec[label] = column
+    crts_star_radec = {}
+    for label, column in zip(colnames, crts_star_radec_table.T):
+        crts_star_radec[label] = column
     
-    return CRTS_star_names, CRTS_star_radec
+    return crts_star_names, crts_star_radec
 
 # merge the two, and at the  end save as separate files...
 
@@ -145,9 +144,9 @@ def load_crts_stars(inDir):
 
 def load_crts_qso(inDir):
     # load names of quasars, which already contain ra and dec infor 
-    CRTS_qso  = os.listdir(inDir)
-    print '\nI loaded names of ', len(CRTS_qso), ' CRTS quasars'
-    return CRTS_qso
+    crts_qso  = os.listdir(inDir)
+    print '\nI loaded names of ', len(crts_qso), ' CRTS quasars'
+    return crts_qso
 
 crts_dirs = ['../QSO_CRTS_processed_err_w/','../stars_CRTS_proc_err_w_good/']
 
@@ -215,13 +214,12 @@ def convert_to_deg(ra_split, dec_split):
     return ra_deg , dec_deg
     
 
-def match_catalogs(cat1_ra, cat1_dec, cat2_ra, cat2_dec, archive_file):
+def match_catalogs(cat1_ra, cat1_dec, cat2_ra, cat2_dec):
     from astropy import units as u
     from astropy.coordinates import SkyCoord
     cat1 = SkyCoord(ra=cat1_ra*u.degree, dec=cat1_dec*u.degree)
     cat2 = SkyCoord(ra=cat2_ra*u.degree, dec=cat2_dec*u.degree)
-    idx, sep2d, dist3d = cat1.match_to_catalog_sky(cat2)
-    #np.savez(archive_file, SDSS_matching_rows = idx, matched_radius=sep2d ) 
+    idx, sep2d, dist3d = cat1.match_to_catalog_sky(cat2) 
     return idx, sep2d 
     
 ##############  ACTION  : MATCHING STARS  ############### 
@@ -322,8 +320,7 @@ def match_stars(purge_pickle=True):
         SDSS_matching_rows , matched_radius= match_catalogs(cat1_ra=ra_deg_CRTS, 
                                                             cat1_dec=dec_deg_CRTS, 
                                                             cat2_ra= sdss_star_data['ra'], 
-                                                            cat2_dec=sdss_star_data['dec'], 
-                                                            archive_file=archive_file_matching) 
+                                                            cat2_dec=sdss_star_data['dec']) 
         np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows)
     else:
         print '\n- Using precomputed SDSS rows matched to CRTS stars from'
@@ -486,8 +483,7 @@ def match_quasars(catalog, purge_pickle=True):
         SDSS_matching_rows , matched_radius= match_catalogs(cat1_ra=ra_deg_CRTS, 
                                                             cat1_dec=dec_deg_CRTS, 
                                                             cat2_ra= sdss_qso_data['ra'], 
-                                                            cat2_dec=sdss_qso_data['dec'], 
-                                                            archive_file=archive_file_matching) 
+                                                            cat2_dec=sdss_qso_data['dec']) 
         np.savez(archive_file_matching, SDSS_matching_rows=SDSS_matching_rows)
         print '\n- Saved the SDSS-CRTS quasars matched rows to ', archive_file_matching
    
