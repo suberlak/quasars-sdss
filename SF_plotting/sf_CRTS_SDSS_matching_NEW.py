@@ -368,6 +368,7 @@ def match_stars(purge_pickle=True):
     print 'Saving the SDSS-CRTS cross-matched stars catalog...' 
     
     archive_SDSS_CRTS = 'CRTS_SDSS_cross_matched_stars_catalog.txt' 
+    print 'to' , archive_SDSS_CRTS
     keys = colnames
     DATA = np.column_stack((datatable))    
     
@@ -598,7 +599,7 @@ def match_quasars(catalog, purge_pickle=True):
 
         #fmt = ['%s', '%.4e', '%10.5f']
         # old fmt '%11.5f'*12+'%6.i'+'%5.i'*2
-        np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%s  '*16, header=header)
+        np.savetxt(archive_SDSS_CRTS_qso, DATA, delimiter =' ', fmt='%s  '*len(keys), header=header)
   
     
     return data_qso_SDSS_CRTS, match_angle_deg
