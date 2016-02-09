@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import rcParams
 from scipy.optimize import curve_fit
+import CRTS_paper_modules as mod
+
 '''
 A program to make the Fig.4 , which is the 
 comparison of three magnitude bins for SF
@@ -34,14 +36,15 @@ colors = ['black','blue']
 
 
 b = 'r_cut'
-dir = 'crucial_results/Feb_2/'
+outDir = os.path.join(os.getcwd(), 'Fig_4_data', datetime.datetime.now().strftime('%Y-%m-%d')+ '/')
+
 fig,ax = plt.subplots(3,1, figsize=(12,12), sharex=True)
 fig.subplots_adjust(hspace=0)
 for i in range(len(Min_arr)):
     for j in range(len(obj_arr)):
         obj = obj_arr[j]
 
-        fname =  b+'_'+str(Min_arr[i])+'-'+str(Max_arr[i])+'_'+obj+'_fc-'+str(fc_arr[i])+'_mean_tau_sig_approx_err.txt'
+        fname =  outDir+b+'_'+str(Min_arr[i])+'-'+str(Max_arr[i])+'_'+obj+'_fc-'+str(fc_arr[i])+'_mean_tau_sig_approx_err.txt'
         print fname
         d =  np.loadtxt(dir+fname, dtype=float)
         mean_tau = d[:,0]

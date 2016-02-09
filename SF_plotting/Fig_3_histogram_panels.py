@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib 
+import os
+import datetime
+
 matplotlib.rc('xtick', labelsize=15) 
 matplotlib.rc('ytick', labelsize=15) 
 
@@ -9,7 +12,7 @@ matplotlib.rc('ytick', labelsize=15)
 #  all updated and developed from Fig_3_histogram_panels.ipynb 
 
 b = 'r_cut'
-d = 'Histograms_r_cut_starsB_QSO_tabelka/'
+outDir = os.path.join(os.getcwd(), 'Fig_3_data', datetime.datetime.now().strftime('%Y-%m-%d')+ '_histogram_table/')
 
 def plot2Chistograms(chiQSO, chiSTAR, Xmin, Xmax, Ymin, Ymax, Xlabel, Ylabel, ax, bins=20, title=''):
     limits = [(Xmin, Xmax, Ymin, Ymax)]
@@ -60,13 +63,13 @@ for i in range(len(tau_max_arr)):  #
     for j in range(len(Min_arr) ):  # 
        
 
-        datafileS = d+b+'_'+str(Min_arr[j])+'-'+str(Max_arr[j])+'_'+'starsB'+'_mi_tau_ei-log_tau_'+\
+        datafileS = outDir+b+'_'+str(Min_arr[j])+'-'+str(Max_arr[j])+'_'+'starsB'+'_mi_tau_ei-log_tau_'+\
                         str(tau_min_arr[i])+'-'+str(tau_max_arr[i])+'.txt'
         vS = np.loadtxt(datafileS, unpack=True)
         chiS = vS[0]/vS[2]
         chiSok = chiS[np.abs(chiS)<5]
         
-        datafileQ = d+b+'_'+str(Min_arr[j])+'-'+str(Max_arr[j])+'_'+'qso'+'_mi_tau_ei-log_tau_'+\
+        datafileQ = outDir+b+'_'+str(Min_arr[j])+'-'+str(Max_arr[j])+'_'+'qso'+'_mi_tau_ei-log_tau_'+\
                 str(tau_min_arr[i])+'-'+str(tau_max_arr[i])+'.txt'
         vQ = np.loadtxt(datafileQ, unpack=True)
         chiQ = vQ[0]/vQ[2]
